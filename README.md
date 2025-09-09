@@ -49,10 +49,17 @@ In your Render dashboard, add the following environment variables:
 ### Build Settings
 
 - **Build Command:** `npm run build`
-- **Publish Directory:** `dist`
+- **Start Command:** `npm start`
 - **Node Version:** 18 or higher
 
-The app is configured to automatically use environment variables from Render's deployment environment.
+### Port Configuration
+
+The app is configured to:
+- Listen on all interfaces (`0.0.0.0`)
+- Use Render's `$PORT` environment variable
+- Fallback to port 5173 for development
+
+The app will automatically use environment variables from Render's deployment environment.
 
 ## Project Structure
 
