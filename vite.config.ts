@@ -7,11 +7,13 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         host: '0.0.0.0',
-        port: parseInt(process.env.PORT || '5173')
+        port: parseInt(process.env.PORT || '5173'),
+        allowedHosts: ['vcl-lab-01.onrender.com', 'localhost', '127.0.0.1']
       },
       preview: {
         host: '0.0.0.0',
-        port: parseInt(process.env.PORT || '4173')
+        port: parseInt(process.env.PORT || '4173'),
+        allowedHosts: ['vcl-lab-01.onrender.com', 'localhost', '127.0.0.1']
       },
       define: {
         // Use environment variables from Render or local .env files
