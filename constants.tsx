@@ -30,6 +30,52 @@ const getModelReferenceInstruction = (data: Record<string, any>) => {
         : "";
 }
 
+const getFaceSwapInstruction = (data: Record<string, any>) => {
+    return data.faceSwapImage 
+        ? "FACE SWAP INSTRUCTION: A face reference image has been provided. Replace the face of the person in the model image with the face from the reference image. Maintain natural facial proportions, skin tone consistency, and realistic integration. The new face should match the lighting and angle of the original photo."
+        : "";
+}
+
+const getDemographicTransformInstruction = (data: Record<string, any>) => {
+    const instructions = [];
+    
+    if (data.targetGender && data.targetGender !== 'option_gender_keep') {
+        const genderMap = {
+            'option_gender_male': 'Transform to male appearance',
+            'option_gender_female': 'Transform to female appearance', 
+            'option_gender_non_binary': 'Transform to non-binary/gender-neutral appearance'
+        };
+        instructions.push(genderMap[data.targetGender as keyof typeof genderMap]);
+    }
+    
+    if (data.targetAge && data.targetAge !== 'option_age_keep') {
+        const ageMap = {
+            'option_age_child': 'Transform to child age (8-12 years)',
+            'option_age_teen': 'Transform to teenage age (13-17 years)',
+            'option_age_young_adult': 'Transform to young adult age (18-25 years)',
+            'option_age_middle_aged': 'Transform to middle-aged appearance (35-50 years)',
+            'option_age_elderly': 'Transform to elderly appearance (65+ years)'
+        };
+        instructions.push(ageMap[data.targetAge as keyof typeof ageMap]);
+    }
+    
+    if (data.targetEthnicity && data.targetEthnicity !== 'option_ethnicity_keep') {
+        const ethnicityMap = {
+            'option_ethnicity_caucasian': 'Transform to Caucasian/European ethnicity',
+            'option_ethnicity_african': 'Transform to African/African-American ethnicity',
+            'option_ethnicity_asian': 'Transform to Asian ethnicity',
+            'option_ethnicity_hispanic': 'Transform to Hispanic/Latino ethnicity',
+            'option_ethnicity_middle_eastern': 'Transform to Middle Eastern ethnicity',
+            'option_ethnicity_mixed': 'Transform to mixed/multi-ethnic appearance'
+        };
+        instructions.push(ethnicityMap[data.targetEthnicity as keyof typeof ethnicityMap]);
+    }
+    
+    return instructions.length > 0 
+        ? `DEMOGRAPHIC TRANSFORMATION: ${instructions.join('. ')}. Maintain realistic proportions and natural appearance.`
+        : "";
+}
+
 export const CATEGORIES: Category[] = [
   {
     id: 'product_photo',
@@ -181,8 +227,14 @@ export const CATEGORIES: Category[] = [
     fields: [
       { name: 'productImage', labelKey: 'field_productImage_label', type: 'file', required: true, infoKey: 'field_productImage_info' },
       { name: 'modelImage', labelKey: 'field_modelImage_label', type: 'file', required: true, infoKey: 'field_modelImage_info' },
-      { name: 'outfitDescription', labelKey: 'field_outfit_description_label', type: 'textarea', placeholderKey: 'field_outfit_description_placeholder', required: true },
-      { name: 'stylePreset', labelKey: 'field_style_preset_label', type: 'select', optionKeys: ['option_style_casual', 'option_style_formal', 'option_style_sporty', 'option_style_trendy', 'option_custom'], required: true },
+      { name: 'transformationType', labelKey: 'field_transformation_type_label', type: 'select', optionKeys: ['option_transform_outfit', 'option_transform_face_swap', 'option_transform_demographics', 'option_transform_full'], required: true },
+      { name: 'faceSwapImage', labelKey: 'field_face_swap_image_label', type: 'file', required: true, infoKey: 'field_face_swap_image_info', condition: { field: 'transformationType', value: 'option_transform_face_swap' }},
+      { name: 'targetGender', labelKey: 'field_target_gender_label', type: 'select', optionKeys: ['option_gender_keep', 'option_gender_male', 'option_gender_female', 'option_gender_non_binary'], required: true, condition: { field: 'transformationType', value: 'option_transform_demographics' }},
+      { name: 'targetAge', labelKey: 'field_target_age_label', type: 'select', optionKeys: ['option_age_keep', 'option_age_child', 'option_age_teen', 'option_age_young_adult', 'option_age_middle_aged', 'option_age_elderly'], required: true, condition: { field: 'transformationType', value: 'option_transform_demographics' }},
+      { name: 'targetEthnicity', labelKey: 'field_target_ethnicity_label', type: 'select', optionKeys: ['option_ethnicity_keep', 'option_ethnicity_caucasian', 'option_ethnicity_african', 'option_ethnicity_asian', 'option_ethnicity_hispanic', 'option_ethnicity_middle_eastern', 'option_ethnicity_mixed'], required: true, condition: { field: 'transformationType', value: 'option_transform_demographics' }},
+      { name: 'outfitDescription', labelKey: 'field_outfit_description_label', type: 'textarea', placeholderKey: 'field_outfit_description_placeholder', required: true, condition: { field: 'transformationType', value: 'option_transform_outfit' }},
+      { name: 'fullTransformDescription', labelKey: 'field_full_transform_description_label', type: 'textarea', placeholderKey: 'field_full_transform_description_placeholder', required: true, condition: { field: 'transformationType', value: 'option_transform_full' }},
+      { name: 'stylePreset', labelKey: 'field_style_preset_label', type: 'select', optionKeys: ['option_style_casual', 'option_style_formal', 'option_style_sporty', 'option_style_trendy', 'option_custom'], required: false },
       { name: 'customStyle', labelKey: 'field_custom_style_label', type: 'textarea', placeholderKey: 'field_custom_style_placeholder', required: true, condition: { field: 'stylePreset', value: 'option_custom' }},
       { name: 'consistencyReferenceImage', labelKey: 'field_consistencyReferenceImage_label', type: 'file', required: false, infoKey: 'field_consistencyReferenceImage_info' },
       { name: 'customRequest', labelKey: 'field_customRequest_label', type: 'textarea', placeholderKey: 'field_customRequest_placeholder', required: false },
@@ -196,12 +248,24 @@ export const CATEGORIES: Category[] = [
         'option_custom': data.customStyle || 'Use the specified custom style preferences.'
       };
       
-      return `Transform the model in the uploaded photo by changing their outfit based on: "${data.outfitDescription}"
-      Style direction: ${styleInstructions[data.stylePreset as keyof typeof styleInstructions]}
+      const transformationInstructions = {
+        'option_transform_outfit': `Transform the model's outfit based on: "${data.outfitDescription}". Keep the model's face, body, pose, and all other characteristics exactly the same.`,
+        'option_transform_face_swap': `Perform a face swap using the provided reference face image. Maintain the model's body, pose, and outfit while replacing only the face.`,
+        'option_transform_demographics': `Transform the model's demographic characteristics as specified. Maintain the model's pose and outfit while changing the specified demographic features.`,
+        'option_transform_full': `Perform a complete transformation based on: "${data.fullTransformDescription}". This may include changes to appearance, outfit, and other characteristics as described.`
+      };
+      
+      const baseInstruction = transformationInstructions[data.transformationType as keyof typeof transformationInstructions] || transformationInstructions['option_transform_outfit'];
+      const styleInstruction = data.stylePreset ? `Style direction: ${styleInstructions[data.stylePreset as keyof typeof styleInstructions]}` : '';
+      
+      return `${baseInstruction}
+      ${styleInstruction}
+      ${getFaceSwapInstruction(data)}
+      ${getDemographicTransformInstruction(data)}
       ${getModelReferenceInstruction(data)}
       ${getConsistencyReferenceInstruction(data)}
       Additional requests: "${data.customRequest || 'None'}".
-      Keep the model's pose, face, and body exactly the same while completely changing their clothing and accessories.`;
+      Ensure all transformations look natural and realistic while maintaining high image quality.`;
     },
   }
 ];
