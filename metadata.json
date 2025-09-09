@@ -1,0 +1,7 @@
+{
+  "name": "AI Business Solution for the Self-Employed",
+  "description": "In these challenging times, we offer a powerful AI solution for self-employed individuals in Korea. Transform your photos into professional assets with innovative features like AI hair models, virtual jewelry try-ons, and interior style transfers to elevate your business.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

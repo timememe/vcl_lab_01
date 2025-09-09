@@ -1,0 +1,5 @@
+<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="300" fill="#dc2626"/>
+  <circle cx="150" cy="150" r="100" fill="white"/>
+  <text x="150" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#dc2626">DIROL</text>
+</svg>
