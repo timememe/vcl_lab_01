@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Category, AIModel } from './types';
 import { CATEGORIES } from './constants';
 import CategorySelector from './components/CategorySelector';
-import ImageGenerator from './components/ImageGenerator';
+import CategorySpecificGenerator from './components/CategorySpecificGenerator';
 import ImageResult from './components/ImageResult';
 import LoadingIndicator from './components/LoadingIndicator';
 import { generateImages } from './services/aiService';
@@ -74,7 +74,7 @@ const App: React.FC = () => {
       case 'generator':
         if (selectedCategory) {
           return (
-            <ImageGenerator
+            <CategorySpecificGenerator
               category={selectedCategory}
               onGenerate={handleGenerate}
               onBack={handleBackToCategories}
