@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Palette2, RefreshCw, Sparkles, Users, Calendar, Globe } from 'lucide-react';
+import { User, Palette, RefreshCw, Sparkles, Users, Calendar, Globe } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -40,7 +40,7 @@ const ModelReskinForm: React.FC<ModelReskinFormProps> = ({
     if (fieldName.includes('ethnicity')) return Globe;
     if (fieldName.includes('face')) return User;
     if (fieldName.includes('transform')) return RefreshCw;
-    return Palette2;
+    return Palette;
   };
 
   const renderField = (field: FormField) => {
