@@ -112,7 +112,7 @@ const App: React.FC = () => {
                 <div className="flex space-x-2">
                     <button onClick={() => setLocale('ru')} className={`px-3 py-1 text-sm rounded-md ${locale === 'ru' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}>RU</button>
                     <button onClick={() => setLocale('en')} className={`px-3 py-1 text-sm rounded-md ${locale === 'en' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}>EN</button>
-                    <button onClick={() => setLocale('ja')} className={`px-3 py-1 text-sm rounded-md ${locale === 'ja' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}>JA</button>
+                    <button onClick={() => setLocale('kk')} className={`px-3 py-1 text-sm rounded-md ${locale === 'kk' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}>KK</button>
                 </div>
                 <div className="flex space-x-2">
                     <button onClick={() => setSelectedModel('gemini')} className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'gemini' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}>Gemini</button>
