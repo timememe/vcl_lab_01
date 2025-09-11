@@ -53,20 +53,17 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelec
       </div>
 
       {/* Categories Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
         {categories.map((category, index) => (
           <Card 
             key={category.id}
-            className="group cursor-pointer border-2 border-transparent hover:border-red-200 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl overflow-hidden"
+            className={`group cursor-pointer border-2 border-transparent hover:border-red-200 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl overflow-hidden bg-gradient-to-br ${getCategoryBg(category.id)} hover:opacity-90`}
             onClick={() => onSelect(category)}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${getCategoryBg(category.id)} opacity-60 group-hover:opacity-80 transition-opacity duration-300`}></div>
-            
-            <CardContent className="relative p-8 text-center h-full flex flex-col">
+            <CardContent className="relative p-4 text-center h-full flex flex-col min-h-[200px]">
               {/* Icon with animated background */}
-              <div className="relative mb-6">
-                <div className={`absolute inset-0 bg-gradient-to-r ${getCategoryGradient(category.id)} rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300 transform scale-110`}></div>
-                <div className={`relative p-4 bg-gradient-to-br ${getCategoryGradient(category.id)} rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+              <div className="relative mb-4">
+                <div className={`relative p-3 bg-gradient-to-br ${getCategoryGradient(category.id)} rounded-xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 mx-auto w-fit`}>
                   <div className="text-white">
                     {category.icon}
                   </div>
@@ -76,24 +73,24 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelec
               {/* Content */}
               <div className="flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 group-hover:text-red-700 transition-colors duration-300">
+                  <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-red-700 transition-colors duration-300">
                     {t(category.nameKey)}
                   </h3>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                  <p className="text-xs text-gray-600 leading-relaxed mb-3">
                     {t(category.descriptionKey)}
                   </p>
                 </div>
 
                 {/* Action indicator */}
-                <div className="flex items-center justify-center gap-2 text-red-600 font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                  <span className="text-sm">Get Started</span>
-                  <ArrowRight className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-1 text-red-600 font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                  <span className="text-xs">Get Started</span>
+                  <ArrowRight className="w-3 h-3" />
                 </div>
               </div>
 
               {/* Decorative elements */}
-              <div className="absolute top-2 right-2 w-16 h-16 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="absolute bottom-2 left-2 w-8 h-8 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="absolute top-1 right-1 w-6 h-6 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute bottom-1 left-1 w-4 h-4 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </CardContent>
           </Card>
         ))}
