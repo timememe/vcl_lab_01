@@ -70,42 +70,67 @@ const CollageCanvas: React.FC<CollageCanvasProps> = ({
   };
 
   const drawImageElement = (ctx: CanvasRenderingContext2D, element: CollageElement): Promise<void> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const { position } = element;
-        const { canvasSize } = collageState.preset;
+        try {
+          const { position } = element;
+          const { canvasSize } = collageState.preset;
 
-        const x = position.x * canvasSize.width;
-        const y = position.y * canvasSize.height;
-        const width = position.width * canvasSize.width;
-        const height = position.height * canvasSize.height;
+          const x = position.x * canvasSize.width;
+          const y = position.y * canvasSize.height;
+          const width = position.width * canvasSize.width;
+          const height = position.height * canvasSize.height;
 
-        ctx.drawImage(img, x, y, width, height);
+          ctx.drawImage(img, x, y, width, height);
 
-        // Draw border if dragged
-        if (interactive && draggedElement === element.id) {
-          ctx.strokeStyle = '#3b82f6';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x, y, width, height);
+          // Draw border if dragged
+          if (interactive && draggedElement === element.id) {
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+          }
+
+          // Draw label if exists
+          if (collageState.labels[element.id]) {
+            const centerX = x + width / 2;
+            const labelY = y + height + 25;
+            drawLabel(ctx, collageState.labels[element.id], centerX, labelY, width);
+          }
+
+          resolve();
+        } catch (error) {
+          console.error('Error drawing image:', error);
+          resolve(); // Continue with other elements
         }
-
-        // Draw label if exists
-        if (element.label && collageState.labels[element.id]) {
-          drawLabel(ctx, collageState.labels[element.id], x, y + height + 5);
-        }
-
-        resolve();
       };
+
+      img.onerror = (error) => {
+        console.error('Error loading image:', error);
+        resolve(); // Continue with other elements
+      };
+
+      // Set crossOrigin before setting src
+      img.crossOrigin = 'anonymous';
 
       if (element.file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          img.src = e.target?.result as string;
+          if (e.target?.result) {
+            img.src = e.target.result as string;
+          } else {
+            resolve();
+          }
+        };
+        reader.onerror = () => {
+          console.error('Error reading file');
+          resolve();
         };
         reader.readAsDataURL(element.file);
       } else if (element.url) {
         img.src = element.url;
+      } else {
+        resolve();
       }
     });
   };
@@ -125,11 +150,31 @@ const CollageCanvas: React.FC<CollageCanvasProps> = ({
     ctx.fillText(element.label, x, y);
   };
 
-  const drawLabel = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number) => {
-    ctx.font = '16px Inter, sans-serif';
-    ctx.fillStyle = '#666666';
-    ctx.textAlign = 'left';
-    ctx.fillText(text, x, y);
+  const drawLabel = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth?: number) => {
+    if (!text.trim()) return;
+
+    const fontSize = Math.max(14, Math.min(20, ctx.canvas.width / 80));
+    ctx.font = `${fontSize}px Inter, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+
+    // Measure text and add background
+    const textMetrics = ctx.measureText(text);
+    const textWidth = maxWidth ? Math.min(textMetrics.width, maxWidth) : textMetrics.width;
+    const textHeight = fontSize;
+    const padding = 8;
+
+    // Draw background rectangle
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(
+      x - textWidth / 2 - padding,
+      y - textHeight - padding,
+      textWidth + padding * 2,
+      textHeight + padding * 2
+    );
+
+    // Draw text
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, x, y - padding / 2, maxWidth);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

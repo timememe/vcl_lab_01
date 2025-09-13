@@ -9,6 +9,7 @@ import { useLocalization } from '../../contexts/LocalizationContext';
 import CollageCanvas from './CollageCanvas';
 import BackgroundManager from './BackgroundManager';
 import ElementLabels from './ElementLabels';
+import InteractiveUploadGrid from './InteractiveUploadGrid';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -94,44 +95,6 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     }));
   };
 
-  const handleCollageImageUpload = useCallback((files: FileList | null, elementIndex?: number) => {
-    if (!files || files.length === 0) return;
-
-    const newElements: CollageElement[] = [];
-    const { preset } = collageState;
-
-    Array.from(files).slice(0, preset.maxElements - collageState.elements.length).forEach((file, index) => {
-      const actualIndex = elementIndex !== undefined ? elementIndex : collageState.elements.length + index;
-
-      let position = preset.defaultElements[actualIndex]?.position;
-      if (!position) {
-        const cols = Math.ceil(Math.sqrt(preset.maxElements));
-        const row = Math.floor(actualIndex / cols);
-        const col = actualIndex % cols;
-        position = {
-          x: (col / cols) + 0.1,
-          y: (row / cols) + 0.1,
-          width: 0.3,
-          height: 0.3
-        };
-      }
-
-      newElements.push({
-        id: `element-${Date.now()}-${index}`,
-        type: 'image',
-        file,
-        position,
-        zIndex: actualIndex + 1
-      });
-    });
-
-    setCollageState(prev => ({
-      ...prev,
-      elements: elementIndex !== undefined
-        ? prev.elements.map((el, i) => i === elementIndex ? newElements[0] : el)
-        : [...prev.elements, ...newElements]
-    }));
-  }, [collageState]);
 
   const handleElementUpdate = useCallback((elementId: string, updates: Partial<CollageElement>) => {
     setCollageState(prev => ({
@@ -434,26 +397,57 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Canvas Area */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Image Upload */}
+          {/* Interactive Upload Grid */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Upload product images</span>
-                </p>
-                <p className="text-xs text-gray-500">
-                  PNG, JPG or JPEG (max {collageState.preset.maxElements} images)
-                </p>
-              </div>
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={(e) => handleCollageImageUpload(e.target.files)}
-              />
-            </label>
+            <InteractiveUploadGrid
+              maxSlots={collageState.preset.maxElements}
+              onSlotsChange={(slots) => {
+                // Update labels when slots change
+                const newLabels: { [key: string]: string } = {};
+                collageState.elements.forEach((element, index) => {
+                  if (slots[index]) {
+                    newLabels[element.id] = slots[index].text;
+                  }
+                });
+                setCollageState(prev => ({ ...prev, labels: newLabels }));
+              }}
+              onUpload={(files, texts) => {
+                // Clear existing elements
+                setCollageState(prev => ({ ...prev, elements: [] }));
+
+                // Create new elements with texts
+                const newElements: CollageElement[] = files.map((file, index) => {
+                  const position = collageState.preset.defaultElements[index]?.position || {
+                    x: 0.1 + (index % 2) * 0.45,
+                    y: 0.1 + Math.floor(index / 2) * 0.4,
+                    width: 0.35,
+                    height: 0.35
+                  };
+
+                  return {
+                    id: `element-${Date.now()}-${index}`,
+                    type: 'image',
+                    file,
+                    position,
+                    zIndex: index + 1
+                  };
+                });
+
+                // Create labels mapping
+                const newLabels: { [key: string]: string } = {};
+                newElements.forEach((element, index) => {
+                  if (texts[index]) {
+                    newLabels[element.id] = texts[index];
+                  }
+                });
+
+                setCollageState(prev => ({
+                  ...prev,
+                  elements: newElements,
+                  labels: newLabels
+                }));
+              }}
+            />
           </div>
 
           {/* Canvas */}
