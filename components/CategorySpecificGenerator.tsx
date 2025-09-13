@@ -1,12 +1,14 @@
 import React from 'react';
-import type { Category } from '../types';
+import type { Category, AIModel } from '../types';
 import ProductPhotoForm from './category-specific/ProductPhotoForm';
 import ModelReskinForm from './category-specific/ModelReskinForm';
 import ConceptArtForm from './category-specific/ConceptArtForm';
+import ProductCollageCreator from './collage/ProductCollageCreator';
 import ImageGenerator from './ImageGenerator'; // Fallback for categories without specific forms
 
 interface CategorySpecificGeneratorProps {
   category: Category;
+  selectedModel: AIModel;
   onGenerate: (formData: Record<string, string | File>) => void;
   onBack: () => void;
   error: string | null;
@@ -15,6 +17,7 @@ interface CategorySpecificGeneratorProps {
 
 const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
   category,
+  selectedModel,
   onGenerate,
   onBack,
   error,
@@ -22,7 +25,7 @@ const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
 }) => {
   // Map category IDs to their specific form components
   const categoryForms: Record<string, React.ComponentType<any>> = {
-    product_photo: ProductPhotoForm,
+    product_photo: ProductCollageCreator,
     model_reskin: ModelReskinForm,
     concept_art: ConceptArtForm,
     // Add more category-specific forms here
@@ -36,6 +39,7 @@ const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
     return (
       <SpecificForm
         category={category}
+        selectedModel={selectedModel}
         onGenerate={onGenerate}
         onBack={onBack}
         error={error}

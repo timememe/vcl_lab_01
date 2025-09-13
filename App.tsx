@@ -89,6 +89,7 @@ const App: React.FC = () => {
           return (
             <CategorySpecificGenerator
               category={selectedCategory}
+              selectedModel={selectedModel}
               onGenerate={handleGenerate}
               onBack={handleBackToCategories}
               error={error}
