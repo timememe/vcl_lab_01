@@ -53,29 +53,84 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   const [activeTab, setActiveTab] = useState<'canvas' | 'background' | 'labels' | 'settings'>('canvas');
   const [customPrompt, setCustomPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
-
   // Traditional form handlers
-  const handleTraditionalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.productImage) {
+  const handleTraditionalGenerate = () => {
+    if (!formData.productName) {
       return;
     }
-    onGenerate(formData);
-  };
 
-  const handleTraditionalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    // Build enhanced prompt from form data
+    const productName = formData.productName === 'custom'
+      ? (formData.customProductName as string || 'product')
+      : formData.productName;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setProductImagePreview(event.target?.result as string);
+    let enhancedPrompt = `Create a professional product photography image of a ${productName}. `;
+
+    // Add style settings
+    const angleMap: Record<string, string> = {
+      'option_camera_default': 'standard product photography angle',
+      'option_camera_top': 'top-down view',
+      'option_camera_45': '45-degree angle view',
+      'option_camera_closeup': 'close-up detail shot'
     };
-    reader.readAsDataURL(file);
 
-    setFormData(prev => ({ ...prev, productImage: file }));
+    const conceptMap: Record<string, string> = {
+      'option_concept_warm': 'warm, natural lighting with cozy atmosphere',
+      'option_concept_modern': 'clean, modern studio lighting with minimalist background',
+      'option_concept_isolated': 'isolated on clean background with enhanced details',
+      'option_concept_lifestyle': 'dynamic lifestyle scene with natural environment'
+    };
+
+    if (formData.cameraAngle && angleMap[formData.cameraAngle as string]) {
+      enhancedPrompt += `Camera angle: ${angleMap[formData.cameraAngle as string]}. `;
+    }
+
+    if (formData.conceptPreset && conceptMap[formData.conceptPreset as string]) {
+      enhancedPrompt += `Style: ${conceptMap[formData.conceptPreset as string]}. `;
+    }
+
+    // Add background settings
+    if (formData.backgroundType) {
+      const backgroundMap: Record<string, string> = {
+        'white': 'clean white background',
+        'black': 'elegant black background',
+        'gradient': 'gradient background',
+        'studio': 'professional studio setup',
+        'natural': 'natural environment background',
+        'minimalist': 'minimalist scene'
+      };
+      enhancedPrompt += `Background: ${backgroundMap[formData.backgroundType as string] || 'clean background'}. `;
+    }
+
+    // Add lighting settings
+    if (formData.lightingStyle) {
+      const lightingMap: Record<string, string> = {
+        'soft': 'soft and even lighting',
+        'dramatic': 'dramatic shadows and lighting',
+        'bright': 'bright and airy lighting',
+        'golden': 'golden hour lighting',
+        'studio': 'professional studio lighting'
+      };
+      enhancedPrompt += `Lighting: ${lightingMap[formData.lightingStyle as string] || 'soft lighting'}. `;
+    }
+
+    if (formData.customRequest) {
+      enhancedPrompt += `Additional requirements: ${formData.customRequest}. `;
+    }
+
+    enhancedPrompt += 'High-resolution, professional quality, commercial photography style.';
+
+    // Create form data for AI generation
+    const aiFormData = {
+      ...formData,
+      productName,
+      customRequest: enhancedPrompt,
+      productImage: new Blob(), // Empty blob since we're generating from text
+    };
+
+    onGenerate(aiFormData);
   };
+
 
   // Collage handlers
   const handlePresetChange = (presetId: string) => {
@@ -235,57 +290,60 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleTraditionalSubmit} className="space-y-6">
-          {/* Product Image Upload */}
+        <div className="space-y-6">
+          {/* Product Selection */}
           <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Product Image</h3>
+            <h3 className="text-lg font-semibold mb-4">Product Selection</h3>
             <div className="space-y-4">
-              <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  {productImagePreview ? (
-                    <img src={productImagePreview} alt="Product preview" className="max-h-48 max-w-full object-contain" />
-                  ) : (
-                    <>
-                      <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload product image</span>
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG or JPEG</p>
-                    </>
-                  )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Product Type</label>
+                <select
+                  value={formData.productName as string}
+                  onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Select a product type...</option>
+                  <option value="smartphone">Smartphone</option>
+                  <option value="laptop">Laptop</option>
+                  <option value="headphones">Headphones</option>
+                  <option value="watch">Watch</option>
+                  <option value="camera">Camera</option>
+                  <option value="shoes">Shoes</option>
+                  <option value="clothing">Clothing</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="home_decor">Home Decor</option>
+                  <option value="furniture">Furniture</option>
+                  <option value="cosmetics">Cosmetics</option>
+                  <option value="food_beverage">Food & Beverage</option>
+                  <option value="sports_equipment">Sports Equipment</option>
+                  <option value="automotive">Automotive</option>
+                  <option value="books">Books</option>
+                  <option value="toys">Toys</option>
+                  <option value="jewelry">Jewelry</option>
+                  <option value="electronics">Electronics</option>
+                  <option value="custom">Custom Product</option>
+                </select>
+              </div>
+
+              {formData.productName === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Custom Product Name</label>
+                  <input
+                    type="text"
+                    value={formData.customProductName as string || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customProductName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter custom product name..."
+                  />
                 </div>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleTraditionalImageUpload}
-                  required
-                />
-              </label>
+              )}
             </div>
           </div>
 
-          {/* Traditional form fields */}
+          {/* Prompt Settings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Product Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
-                  <input
-                    type="text"
-                    value={formData.productName as string}
-                    onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter product name..."
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Settings</h3>
+              <h3 className="text-lg font-semibold mb-4">Style Settings</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Camera Angle</label>
@@ -316,6 +374,42 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4">Background Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Background Type</label>
+                  <select
+                    value={formData.backgroundType as string || 'white'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, backgroundType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="white">Clean White</option>
+                    <option value="black">Elegant Black</option>
+                    <option value="gradient">Gradient Background</option>
+                    <option value="studio">Studio Setup</option>
+                    <option value="natural">Natural Environment</option>
+                    <option value="minimalist">Minimalist Scene</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lighting Style</label>
+                  <select
+                    value={formData.lightingStyle as string || 'soft'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="soft">Soft & Even</option>
+                    <option value="dramatic">Dramatic Shadows</option>
+                    <option value="bright">Bright & Airy</option>
+                    <option value="golden">Golden Hour</option>
+                    <option value="studio">Professional Studio</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg p-6 border border-gray-200">
@@ -336,14 +430,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           )}
 
           <button
-            type="submit"
-            disabled={!formData.productImage}
+            onClick={handleTraditionalGenerate}
+            disabled={!formData.productName}
             className="w-full flex items-center justify-center px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Camera className="w-5 h-5 mr-2" />
             Generate Product Photo
           </button>
-        </form>
+        </div>
       </div>
     );
   }
