@@ -6,6 +6,8 @@ import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services
 import { collageAiService, CollageAiRequest } from '../../services/collageAiService';
 import { collageExportService } from '../../services/collageExport';
 import { useLocalization } from '../../contexts/LocalizationContext';
+import { ProductPreset, getPresetsForCategory } from '../../presets';
+import PresetSelector from '../PresetSelector';
 import CollageCanvas from './CollageCanvas';
 import BackgroundManager from './BackgroundManager';
 import ElementLabels from './ElementLabels';
@@ -36,12 +38,15 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   // Traditional single product form state
   const [formData, setFormData] = useState<Record<string, string | File>>(
     initialData || {
-      productName: '',
       cameraAngle: 'option_camera_default',
       conceptPreset: 'option_concept_modern',
       customRequest: ''
     }
   );
+
+  // Preset selection state
+  const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
+  const [selectedPreset, setSelectedPreset] = useState<ProductPreset | null>(null);
 
   // Collage state
   const [collageState, setCollageState] = useState<CollageState>(() => ({
@@ -55,16 +60,18 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   // Traditional form handlers
   const handleTraditionalGenerate = () => {
-    if (!formData.productName) {
+    if (selectedMode === 'preset' && !selectedPreset) {
       return;
     }
 
     // Build enhanced prompt from form data
-    const productName = formData.productName === 'custom'
-      ? (formData.customProductName as string || 'product')
-      : formData.productName;
+    let enhancedPrompt = '';
 
-    let enhancedPrompt = `Create a professional product photography image of a ${productName}. `;
+    if (selectedMode === 'preset' && selectedPreset) {
+      enhancedPrompt = `Create a professional product photography image using the preset: ${selectedPreset.nameKey}. `;
+    } else {
+      enhancedPrompt = 'Create a professional product photography image. ';
+    }
 
     // Add style settings
     const angleMap: Record<string, string> = {
@@ -123,10 +130,15 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     // Create form data for AI generation
     const aiFormData = {
       ...formData,
-      productName,
       customRequest: enhancedPrompt,
       productImage: new Blob(), // Empty blob since we're generating from text
     };
+
+    // Add preset data if preset mode is selected
+    if (selectedMode === 'preset' && selectedPreset) {
+      aiFormData.selectedPreset = selectedPreset.id;
+      aiFormData.presetImage = selectedPreset.imagePath;
+    }
 
     onGenerate(aiFormData);
   };
@@ -296,51 +308,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             {/* Product Selection */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Type</label>
-                <select
-                  value={formData.productName as string}
-                  onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">Select a product type...</option>
-                  <option value="smartphone">Smartphone</option>
-                  <option value="laptop">Laptop</option>
-                  <option value="headphones">Headphones</option>
-                  <option value="watch">Watch</option>
-                  <option value="camera">Camera</option>
-                  <option value="shoes">Shoes</option>
-                  <option value="clothing">Clothing</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="home_decor">Home Decor</option>
-                  <option value="furniture">Furniture</option>
-                  <option value="cosmetics">Cosmetics</option>
-                  <option value="food_beverage">Food & Beverage</option>
-                  <option value="sports_equipment">Sports Equipment</option>
-                  <option value="automotive">Automotive</option>
-                  <option value="books">Books</option>
-                  <option value="toys">Toys</option>
-                  <option value="jewelry">Jewelry</option>
-                  <option value="electronics">Electronics</option>
-                  <option value="custom">Custom Product</option>
-                </select>
-              </div>
-
-              {formData.productName === 'custom' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Custom Product Name</label>
-                  <input
-                    type="text"
-                    value={formData.customProductName as string || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, customProductName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter custom product name..."
-                  />
-                </div>
-              )}
+              <PresetSelector
+                categoryId={category.id}
+                onPresetSelect={setSelectedPreset}
+                onUploadSelect={() => setSelectedMode('upload')}
+                selectedPreset={selectedPreset}
+                selectedMode={selectedMode}
+              />
             </div>
-          </div>
 
             {/* Style Settings */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -428,7 +403,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             {/* Generate Button */}
             <button
               onClick={handleTraditionalGenerate}
-              disabled={!formData.productName}
+              disabled={selectedMode === 'preset' ? !selectedPreset : false}
               className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Camera className="w-5 h-5 mr-2" />
@@ -451,12 +426,12 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   <Camera className="w-8 h-8 text-gray-400" />
                 </div>
                 <p className="text-gray-500 text-sm">
-                  {formData.productName
-                    ? `Ready to generate ${formData.productName === 'custom' ? formData.customProductName || 'custom product' : formData.productName} photo`
-                    : 'Select a product type to see preview'
+                  {selectedMode === 'preset'
+                    ? (selectedPreset ? `Ready to generate ${selectedPreset.nameKey} photo` : 'Select a product preset to see preview')
+                    : 'Upload mode selected'
                   }
                 </p>
-                {formData.productName && (
+                {selectedPreset && (
                   <div className="mt-3 text-xs text-gray-400 space-y-1">
                     <p>Style: {formData.conceptPreset?.replace('option_concept_', '').replace('_', ' & ')}</p>
                     <p>Background: {formData.backgroundType || 'white'}</p>
