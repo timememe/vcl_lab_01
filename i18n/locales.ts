@@ -32,6 +32,8 @@ export const locales: { [key in Locale]: Translations } = {
     category_angle_change_desc: 'Смена ракурса объекта',
     category_model_reskin_name: 'Рескин модели',
     category_model_reskin_desc: 'Переодевание модели в новую одежду',
+    category_collage_name: 'Коллаж',
+    category_collage_desc: 'Создание и AI-обработка коллажей',
 
     // Generator
     generator_title_suffix: 'Преобразование фото',
@@ -216,6 +218,8 @@ export const locales: { [key in Locale]: Translations } = {
     category_angle_change_desc: 'Change object perspective',
     category_model_reskin_name: 'Model Reskin',
     category_model_reskin_desc: 'Change model outfit',
+    category_collage_name: 'Collage',
+    category_collage_desc: 'Create and AI-enhance collages',
 
     // Generator
     generator_title_suffix: 'Photo Transformation',
@@ -400,6 +404,8 @@ export const locales: { [key in Locale]: Translations } = {
     category_angle_change_desc: 'Объектінің көзқарасын өзгерту',
     category_model_reskin_name: 'Модель рескині',
     category_model_reskin_desc: 'Модельдің киімін өзгерту',
+    category_collage_name: 'Коллаж',
+    category_collage_desc: 'Коллаждарды жасау және AI арқылы жақсарту',
 
     // Generator
     generator_title_suffix: 'Фото түрлендіру',

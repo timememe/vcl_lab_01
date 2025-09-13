@@ -5,6 +5,7 @@ import CategorySelector from './components/CategorySelector';
 import CategorySpecificGenerator from './components/CategorySpecificGenerator';
 import ImageResult from './components/ImageResult';
 import LoadingIndicator from './components/LoadingIndicator';
+import CollageCreator from './components/collage/CollageCreator';
 import { generateImages } from './services/aiService';
 import { useLocalization } from './contexts/LocalizationContext';
 
@@ -73,6 +74,18 @@ const App: React.FC = () => {
         return <CategorySelector categories={CATEGORIES} onSelect={handleCategorySelect} />;
       case 'generator':
         if (selectedCategory) {
+          if (selectedCategory.id === 'collage') {
+            return (
+              <CollageCreator
+                selectedModel={selectedModel}
+                onGenerate={(images) => {
+                  setGeneratedImages(images);
+                  setCurrentStep('result');
+                }}
+                onBack={handleBackToCategories}
+              />
+            );
+          }
           return (
             <CategorySpecificGenerator
               category={selectedCategory}

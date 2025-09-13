@@ -8,6 +8,7 @@ const ConceptArtIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className
 const StoryboardIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-600" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 6H5V5h14v4zm0 4H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm0 6H5v-4h14v4z"/></svg> );
 const AngleChangeIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> );
 const ModelReskinIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-600" viewBox="0 0 24 24" fill="currentColor"><path d="M20.26 8.13l-4.21-5.9c-.31-.44-.82-.73-1.39-.73H9.34c-.57 0-1.08.29-1.39.73L3.74 8.13c-.22.31-.34.68-.34 1.07v.51c0 1.1.9 2 2 2h13.2c1.1 0 2-.9 2-2v-.51c0-.39-.12-.76-.34-1.07zM12 14c-2.76 0-5 2.24-5 5v1h10v-1c0-2.76-2.24-5-5-5z"/></svg> );
+const CollageIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M2 6h6v6H2V6zm2 2v2h2V8H4zm8-2h6v6h-6V6zm2 2v2h2V8h-2zM2 14h6v6H2v-6zm2 2v2h2v-2H4zm10 0h6v6h-6v-6zm2 2v2h2v-2h-2zm-4-8h2v2h-2V8zm0 8h2v2h-2v-2z"/></svg> );
 
 const getConceptInstructions = (data: Record<string, string>, presetInstructions: Record<string, string>) => {
   if (data.conceptPreset === 'option_custom') {
@@ -267,5 +268,13 @@ export const CATEGORIES: Category[] = [
       Additional requests: "${data.customRequest || 'None'}".
       Ensure all transformations look natural and realistic while maintaining high image quality.`;
     },
+  },
+  {
+    id: 'collage',
+    nameKey: 'category_collage_name',
+    descriptionKey: 'category_collage_desc',
+    icon: <CollageIcon />,
+    fields: [],
+    promptTemplate: () => 'Collage creation and AI enhancement',
   }
 ];
