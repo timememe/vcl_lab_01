@@ -290,10 +290,12 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
         </div>
 
-        <div className="space-y-6">
-          {/* Product Selection */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Product Selection</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-250px)]">
+          {/* Left Column - Settings */}
+          <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-250px)]">
+            {/* Product Selection */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Type</label>
@@ -340,17 +342,16 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             </div>
           </div>
 
-          {/* Prompt Settings */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Style Settings</h3>
-              <div className="space-y-4">
+            {/* Style Settings */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3">Style Settings</h3>
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Camera Angle</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
                   <select
                     value={formData.cameraAngle as string}
                     onChange={(e) => setFormData(prev => ({ ...prev, cameraAngle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   >
                     <option value="option_camera_default">Default View</option>
                     <option value="option_camera_top">Top View</option>
@@ -360,11 +361,11 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Concept Style</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Concept Style</label>
                   <select
                     value={formData.conceptPreset as string}
                     onChange={(e) => setFormData(prev => ({ ...prev, conceptPreset: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   >
                     <option value="option_concept_warm">Warm & Natural</option>
                     <option value="option_concept_modern">Modern & Clean</option>
@@ -375,15 +376,16 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Background Settings</h3>
-              <div className="space-y-4">
+            {/* Background Settings */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3">Background Settings</h3>
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Background Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Background Type</label>
                   <select
                     value={formData.backgroundType as string || 'white'}
                     onChange={(e) => setFormData(prev => ({ ...prev, backgroundType: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   >
                     <option value="white">Clean White</option>
                     <option value="black">Elegant Black</option>
@@ -395,11 +397,11 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Lighting Style</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lighting Style</label>
                   <select
                     value={formData.lightingStyle as string || 'soft'}
                     onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   >
                     <option value="soft">Soft & Even</option>
                     <option value="dramatic">Dramatic Shadows</option>
@@ -410,33 +412,60 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Additional Requests</h3>
-            <textarea
-              value={formData.customRequest as string}
-              onChange={(e) => setFormData(prev => ({ ...prev, customRequest: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none"
-              rows={3}
-              placeholder="Any additional requirements or style preferences..."
-            />
-          </div>
-
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
+            {/* Additional Requests */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3">Additional Requests</h3>
+              <textarea
+                value={formData.customRequest as string}
+                onChange={(e) => setFormData(prev => ({ ...prev, customRequest: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none text-sm"
+                rows={3}
+                placeholder="Any additional requirements or style preferences..."
+              />
             </div>
-          )}
 
-          <button
-            onClick={handleTraditionalGenerate}
-            disabled={!formData.productName}
-            className="w-full flex items-center justify-center px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Camera className="w-5 h-5 mr-2" />
-            Generate Product Photo
-          </button>
+            {/* Generate Button */}
+            <button
+              onClick={handleTraditionalGenerate}
+              disabled={!formData.productName}
+              className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              Generate Product Photo
+            </button>
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Preview */}
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col">
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">Preview</h3>
+            <div className="flex-1 flex items-center justify-center min-h-[300px]">
+              <div className="text-center">
+                <div className="w-24 h-24 bg-gray-200 rounded-lg mb-4 mx-auto flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-sm">
+                  {formData.productName
+                    ? `Ready to generate ${formData.productName === 'custom' ? formData.customProductName || 'custom product' : formData.productName} photo`
+                    : 'Select a product type to see preview'
+                  }
+                </p>
+                {formData.productName && (
+                  <div className="mt-3 text-xs text-gray-400 space-y-1">
+                    <p>Style: {formData.conceptPreset?.replace('option_concept_', '').replace('_', ' & ')}</p>
+                    <p>Background: {formData.backgroundType || 'white'}</p>
+                    <p>Lighting: {formData.lightingStyle || 'soft'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -466,14 +495,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       </div>
 
       {/* Preset Selector */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
+      <div className="bg-white rounded-lg p-4 border border-gray-200 mb-6">
         <h3 className="text-lg font-semibold mb-3">Choose Product Layout</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {PRODUCT_COLLAGE_PRESETS.map((preset) => (
             <button
               key={preset.id}
               onClick={() => handlePresetChange(preset.id)}
-              className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+              className={`p-2 rounded-lg border-2 text-xs font-medium transition-all ${
                 collageState.preset.id === preset.id
                   ? 'border-red-500 bg-red-50 text-red-700'
                   : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -481,16 +510,16 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             >
               <div className="mb-1">{preset.name}</div>
               <div className="text-xs text-gray-500">
-                {preset.aspectRatio.width}:{preset.aspectRatio.height} • {preset.maxElements} items
+                {preset.aspectRatio.width}:{preset.aspectRatio.height}
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Canvas Area */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-350px)]">
+        {/* Left Column - Controls */}
+        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-350px)]">
           {/* Interactive Upload Grid */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <InteractiveUploadGrid
@@ -543,132 +572,106 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
               }}
             />
           </div>
+          {/* Background Manager */}
+          <BackgroundManager
+            currentBackground={collageState.background}
+            onBackgroundChange={handleBackgroundChange}
+            allowLabels={collageState.preset.allowLabels}
+          />
 
-          {/* Canvas */}
+          {/* Product Settings */}
           <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <CollageCanvas
-              collageState={collageState}
-              onElementUpdate={handleElementUpdate}
-              onElementRemove={handleElementRemove}
-              className="w-full"
+            <h3 className="text-lg font-semibold mb-3">Product Details</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  value={formData.productName as string}
+                  onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Enter product name..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Style Concept</label>
+                <select
+                  value={formData.conceptPreset as string}
+                  onChange={(e) => setFormData(prev => ({ ...prev, conceptPreset: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="option_concept_warm">Warm & Natural</option>
+                  <option value="option_concept_modern">Modern & Clean</option>
+                  <option value="option_concept_isolated">Isolated Background</option>
+                  <option value="option_concept_lifestyle">Lifestyle Scene</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Prompt */}
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h3 className="text-lg font-semibold mb-3">AI Enhancement</h3>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
+              rows={3}
+              placeholder="Describe how you want the AI to enhance your product collage..."
             />
           </div>
-        </div>
 
-        {/* Controls Panel */}
-        <div className="space-y-4">
-          {/* Tab Navigation */}
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            {[
-              { id: 'canvas', label: 'Settings', icon: Settings },
-              { id: 'background', label: 'Background', icon: ImageIcon },
-              { id: 'labels', label: 'Labels', icon: Upload }
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id as any)}
-                className={`flex-1 flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === id
-                    ? 'bg-white text-red-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <Icon className="w-4 h-4 mr-1" />
-                {label}
-              </button>
-            ))}
+          {/* Actions */}
+          <div className="space-y-3">
+            <button
+              onClick={handleCollageGenerate}
+              disabled={isGenerating || collageState.elements.length === 0}
+              className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Wand2 className="w-5 h-5 mr-2" />
+              {isGenerating ? 'Generating...' : 'Generate with AI'}
+            </button>
+
+            <button
+              onClick={handleExport}
+              className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+            >
+              <Download className="w-5 h-5 mr-2" />
+              Export PNG
+            </button>
           </div>
 
-          {/* Tab Content */}
-          <div className="space-y-4">
-            {activeTab === 'background' && (
-              <BackgroundManager
-                currentBackground={collageState.background}
-                onBackgroundChange={handleBackgroundChange}
-                allowLabels={collageState.preset.allowLabels}
-              />
-            )}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+        </div>
 
-            {activeTab === 'labels' && (
-              <ElementLabels
-                elements={collageState.elements}
-                labels={collageState.labels}
-                onLabelChange={handleLabelChange}
+        {/* Right Column - Canvas Preview */}
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col">
+          <h3 className="text-lg font-semibold mb-3 text-gray-800">Canvas Preview</h3>
+          <div className="flex-1 flex items-center justify-center min-h-[400px]">
+            {collageState.elements.length > 0 ? (
+              <CollageCanvas
+                collageState={collageState}
+                onElementUpdate={handleElementUpdate}
                 onElementRemove={handleElementRemove}
+                className="w-full max-w-full"
+                interactive={true}
               />
-            )}
-
-            {activeTab === 'canvas' && (
-              <div className="space-y-4">
-                {/* Product Details */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h3 className="text-lg font-semibold mb-3">Product Details</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-                      <input
-                        type="text"
-                        value={formData.productName as string}
-                        onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="Enter product name..."
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Style Concept</label>
-                      <select
-                        value={formData.conceptPreset as string}
-                        onChange={(e) => setFormData(prev => ({ ...prev, conceptPreset: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="option_concept_warm">Warm & Natural</option>
-                        <option value="option_concept_modern">Modern & Clean</option>
-                        <option value="option_concept_isolated">Isolated Background</option>
-                        <option value="option_concept_lifestyle">Lifestyle Scene</option>
-                      </select>
-                    </div>
-                  </div>
+            ) : (
+              <div className="text-center">
+                <div className="w-24 h-24 bg-gray-200 rounded-lg mb-4 mx-auto flex items-center justify-center">
+                  <ImageIcon className="w-8 h-8 text-gray-400" />
                 </div>
-
-                {/* Custom Prompt */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <h3 className="text-lg font-semibold mb-3">AI Enhancement</h3>
-                  <textarea
-                    value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
-                    rows={3}
-                    placeholder="Describe how you want the AI to enhance your product collage..."
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-3">
-                  <button
-                    onClick={handleCollageGenerate}
-                    disabled={isGenerating || collageState.elements.length === 0}
-                    className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Wand2 className="w-5 h-5 mr-2" />
-                    {isGenerating ? 'Generating...' : 'Generate with AI'}
-                  </button>
-
-                  <button
-                    onClick={handleExport}
-                    className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Export PNG
-                  </button>
-                </div>
-
-                {/* Error Display */}
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                    {error}
-                  </div>
-                )}
+                <p className="text-gray-500 text-sm">
+                  Upload images to see your collage preview
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  Layout: {collageState.preset.name} ({collageState.preset.aspectRatio.width}:{collageState.preset.aspectRatio.height})
+                </p>
               </div>
             )}
           </div>
