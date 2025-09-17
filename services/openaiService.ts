@@ -1,5 +1,4 @@
 import type { Category } from '../types';
-import { OpenAI } from 'openai';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -29,13 +28,21 @@ const getMimeTypeFromExtension = (filename: string): string => {
     }
 };
 
-// Helper function to convert File to the format expected by OpenAI
-const fileToOpenAIFile = async (file: File): Promise<File> => {
-    // Create a new File object with correct type
+// Helper function to create proper FormData for OpenAI API
+const createFormDataForOpenAI = async (file: File, prompt: string): Promise<FormData> => {
+    const formData = new FormData();
+    
+    // Ensure proper MIME type
     const detectedMimeType = file.type || getMimeTypeFromExtension(file.name);
-    return new File([file], file.name, {
+    const correctedFile = new File([file], file.name, {
         type: detectedMimeType
     });
+    
+    formData.append('image', correctedFile);
+    formData.append('prompt', prompt);
+    formData.append('model', 'gpt-image-1');
+    
+    return formData;
 };
 
 
@@ -66,32 +73,37 @@ export const generateProductImagesOpenAI = async (
     console.log("Generated Prompt for OpenAI gpt-image-1:", prompt);
     
     try {
-        // Create OpenAI client
-        const openai = new OpenAI({
-            apiKey: OPENAI_API_KEY
-        });
+        // Create proper FormData for the API
+        const formDataForAPI = await createFormDataForOpenAI(imageFile, prompt);
         
-        // Convert File to proper format for OpenAI
-        const openaiFile = await fileToOpenAIFile(imageFile);
-        
-        console.log(`Sending request with file: ${openaiFile.name}, type: ${openaiFile.type}, size: ${openaiFile.size} bytes`);
+        console.log(`Sending request with file: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
         console.log(`Prompt: ${prompt}`);
         
-        // Use OpenAI images.edit API like in imgen.js
-        const response = await openai.images.edit({
-            model: "gpt-image-1",
-            image: openaiFile,
-            prompt: prompt
+        // Use fetch API to call OpenAI images.edit endpoint
+        const response = await fetch('https://api.openai.com/v1/images/edits', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+                // Don't set Content-Type header - let browser set it for FormData
+            },
+            body: formDataForAPI
         });
         
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('OpenAI API Error:', errorData);
+            throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+        }
+        
+        const data = await response.json();
         console.log('Response received from OpenAI API');
         
-        if (!response.data || response.data.length === 0) {
+        if (!data.data || data.data.length === 0) {
             throw new Error("OpenAI API did not return any images.");
         }
         
         // Handle both URL and base64 responses
-        const images = await Promise.all(response.data.map(async (item: any) => {
+        const images = await Promise.all(data.data.map(async (item: any) => {
             if (item.b64_json) {
                 return `data:image/png;base64,${item.b64_json}`;
             } else if (item.url) {
