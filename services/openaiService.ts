@@ -8,7 +8,13 @@ if (!OPENAI_API_KEY) {
 
 // Helper function to determine MIME type from file extension
 const getMimeTypeFromExtension = (filename: string): string => {
-    const extension = filename.toLowerCase().split('.').pop();
+    if (!filename || typeof filename !== 'string') {
+        return 'image/png'; // Default fallback
+    }
+    
+    const parts = filename.toLowerCase().split('.');
+    const extension = parts.length > 1 ? parts.pop() : null;
+    
     switch (extension) {
         case 'jpg':
         case 'jpeg':
