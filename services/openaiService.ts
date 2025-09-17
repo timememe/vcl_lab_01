@@ -6,6 +6,22 @@ if (!OPENAI_API_KEY) {
     console.warn("OPENAI_API_KEY environment variable is not set.");
 }
 
+// Helper function to determine MIME type from file extension
+const getMimeTypeFromExtension = (filename: string): string => {
+    const extension = filename.toLowerCase().split('.').pop();
+    switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'webp':
+            return 'image/webp';
+        default:
+            return 'image/png'; // Default fallback
+    }
+};
+
 
 export const generateProductImagesOpenAI = async (
     category: Category,
@@ -21,6 +37,14 @@ export const generateProductImagesOpenAI = async (
         throw new Error("Image file is missing.");
     }
     
+    // Determine correct MIME type
+    const detectedMimeType = imageFile.type || getMimeTypeFromExtension(imageFile.name);
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    
+    if (!supportedTypes.includes(detectedMimeType)) {
+        throw new Error(`Unsupported file type: ${detectedMimeType}. Supported formats: JPEG, PNG, WebP`);
+    }
+    
     // Generate prompt using the category template
     const prompt = category.promptTemplate(formData as Record<string, string>);
     console.log("Generated Prompt for OpenAI gpt-image-1:", prompt);
@@ -28,7 +52,15 @@ export const generateProductImagesOpenAI = async (
     try {
         // Use OpenAI gpt-image-1 for image editing/transformation
         const formDataForAPI = new FormData();
-        formDataForAPI.append('image', imageFile);
+        
+        // Ensure proper file type by creating a new File object with correct MIME type
+        const correctedFile = new File([imageFile], imageFile.name, {
+            type: detectedMimeType
+        });
+        
+        console.log(`File MIME type: ${correctedFile.type}, Size: ${correctedFile.size} bytes`);
+        
+        formDataForAPI.append('image', correctedFile);
         formDataForAPI.append('prompt', prompt);
         formDataForAPI.append('model', 'gpt-image-1');
         

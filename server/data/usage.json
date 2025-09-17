@@ -1,10 +1,37 @@
 {
-    "date":  "2025-09-17",
-    "credits":  {
-                    "used":  0,
-                    "dailyLimit":  100
-                },
-    "categories":  {
-
-                   }
+  "date": "2025-09-17",
+  "categories": {
+    "product_photo": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "model_product": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "concept_art": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "storyboard": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "angle_change": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "model_reskin": {
+      "dailyLimit": 0,
+      "used": 0
+    },
+    "collage": {
+      "dailyLimit": 0,
+      "used": 0
+    }
+  },
+  "credits": {
+    "used": 0,
+    "dailyLimit": 100
+  }
 }
