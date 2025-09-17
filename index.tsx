@@ -2,18 +2,21 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { LocalizationProvider } from './contexts/LocalizationContext';
+import { AuthProvider } from './contexts/AuthContext';
 import './globals.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+  throw new Error('Could not find root element to mount to');
 }
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <LocalizationProvider>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </LocalizationProvider>
   </React.StrictMode>
 );

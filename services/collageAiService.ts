@@ -63,7 +63,7 @@ export class CollageAiService {
 
     // Generate images using existing AI service
     const generatedImages = await generateImages(model, {
-      id: 'collage_generation',
+      id: 'collage',
       nameKey: 'Collage Generation',
       descriptionKey: 'AI-enhanced collage generation',
       icon: null,
