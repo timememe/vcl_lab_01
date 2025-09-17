@@ -28,19 +28,44 @@ const getMimeTypeFromExtension = (filename: string): string => {
     }
 };
 
+// Helper function to validate and process image for OpenAI API
+const validateAndProcessImage = async (file: File): Promise<File> => {
+    // Check file size (max 4MB)
+    const maxSize = 4 * 1024 * 1024; // 4MB
+    if (file.size > maxSize) {
+        throw new Error(`Image file too large: ${Math.round(file.size / 1024 / 1024)}MB. Maximum size is 4MB.`);
+    }
+    
+    // Ensure proper MIME type
+    const detectedMimeType = file.type || getMimeTypeFromExtension(file.name);
+    
+    // OpenAI /images/edits only supports PNG
+    if (detectedMimeType !== 'image/png') {
+        throw new Error(`OpenAI images/edits endpoint only supports PNG format. Please convert your ${detectedMimeType} image to PNG first.`);
+    }
+    
+    // Create a new File object with correct type and name
+    const processedFile = new File([file], file.name.endsWith('.png') ? file.name : file.name + '.png', {
+        type: 'image/png'
+    });
+    
+    console.log(`Processed image: ${processedFile.name}, type: ${processedFile.type}, size: ${processedFile.size} bytes`);
+    
+    return processedFile;
+};
+
 // Helper function to create proper FormData for OpenAI API
 const createFormDataForOpenAI = async (file: File, prompt: string): Promise<FormData> => {
     const formData = new FormData();
     
-    // Ensure proper MIME type
-    const detectedMimeType = file.type || getMimeTypeFromExtension(file.name);
-    const correctedFile = new File([file], file.name, {
-        type: detectedMimeType
-    });
+    // Validate and process the image
+    const processedFile = await validateAndProcessImage(file);
     
-    formData.append('image', correctedFile);
+    formData.append('image', processedFile);
     formData.append('prompt', prompt);
     formData.append('model', 'gpt-image-1');
+    formData.append('n', '1'); // Number of images to generate
+    formData.append('size', '1024x1024'); // Image size
     
     return formData;
 };
@@ -62,10 +87,10 @@ export const generateProductImagesOpenAI = async (
     
     // Determine correct MIME type
     const detectedMimeType = imageFile.type || getMimeTypeFromExtension(imageFile.name);
-    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     
-    if (!supportedTypes.includes(detectedMimeType)) {
-        throw new Error(`Unsupported file type: ${detectedMimeType}. Supported formats: JPEG, PNG, WebP`);
+    // For OpenAI images/edits, we only support PNG
+    if (detectedMimeType !== 'image/png') {
+        throw new Error(`OpenAI images/edits only supports PNG format. You uploaded: ${detectedMimeType}. Please convert your image to PNG first.`);
     }
     
     // Generate prompt using the category template
