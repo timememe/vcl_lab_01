@@ -36,8 +36,11 @@ const validateAndProcessImage = async (file: File): Promise<File> => {
         throw new Error(`Image file too large: ${Math.round(file.size / 1024 / 1024)}MB. Maximum size is 4MB.`);
     }
     
+    // Ensure we have a valid filename
+    const fileName = file.name || 'image.png';
+    
     // Ensure proper MIME type
-    const detectedMimeType = file.type || getMimeTypeFromExtension(file.name);
+    const detectedMimeType = file.type || getMimeTypeFromExtension(fileName);
     
     // OpenAI /images/edits only supports PNG
     if (detectedMimeType !== 'image/png') {
@@ -45,7 +48,8 @@ const validateAndProcessImage = async (file: File): Promise<File> => {
     }
     
     // Create a new File object with correct type and name
-    const processedFile = new File([file], file.name.endsWith('.png') ? file.name : file.name + '.png', {
+    const finalFileName = fileName.endsWith('.png') ? fileName : fileName + '.png';
+    const processedFile = new File([file], finalFileName, {
         type: 'image/png'
     });
     
@@ -85,8 +89,11 @@ export const generateProductImagesOpenAI = async (
         throw new Error("Image file is missing.");
     }
     
+    // Ensure we have a valid filename
+    const fileName = imageFile.name || 'image.png';
+    
     // Determine correct MIME type
-    const detectedMimeType = imageFile.type || getMimeTypeFromExtension(imageFile.name);
+    const detectedMimeType = imageFile.type || getMimeTypeFromExtension(fileName);
     
     // For OpenAI images/edits, we only support PNG
     if (detectedMimeType !== 'image/png') {
