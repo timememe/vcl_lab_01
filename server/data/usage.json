@@ -3,7 +3,7 @@
   "categories": {
     "product_photo": {
       "dailyLimit": 0,
-      "used": 0
+      "used": 3
     },
     "model_product": {
       "dailyLimit": 0,
@@ -32,6 +32,6 @@
   },
   "credits": {
     "dailyLimit": 100,
-    "used": 0
+    "used": 3
   }
 }
