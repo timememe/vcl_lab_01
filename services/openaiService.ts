@@ -81,7 +81,7 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
     console.log("Text-to-image prompt:", prompt);
     
     try {
-        // Use OpenAI images/generations endpoint for text-to-image
+        // Use OpenAI images/generations endpoint for text-to-image with gpt-image-1
         const response = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
             headers: {
@@ -92,8 +92,7 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
                 model: 'gpt-image-1',
                 prompt: prompt,
                 n: 1,
-                size: '1024x1024',
-                response_format: 'url'
+                size: '1024x1024'
             })
         });
         
