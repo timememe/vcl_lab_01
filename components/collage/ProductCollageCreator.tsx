@@ -128,10 +128,15 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     enhancedPrompt += 'High-resolution, professional quality, commercial photography style.';
 
     // Create form data for AI generation
+    // Note: This is text-to-image generation, not image editing
+    // We need to handle this differently than image editing
     const aiFormData = {
       ...formData,
       customRequest: enhancedPrompt,
-      productImage: new Blob(), // Empty blob since we're generating from text
+      // For text-to-image, we don't need a productImage
+      // The OpenAI service needs to be modified to handle text-to-image generation
+      generationType: 'text-to-image',
+      prompt: enhancedPrompt
     };
 
     // Add preset data if preset mode is selected

@@ -74,6 +74,72 @@ const createFormDataForOpenAI = async (file: File, prompt: string): Promise<Form
     return formData;
 };
 
+// Function for text-to-image generation
+const generateTextToImage = async (formData: Record<string, string | File>): Promise<string[]> => {
+    const prompt = formData.prompt as string || formData.customRequest as string || 'Generate a professional product image';
+    
+    console.log("Text-to-image prompt:", prompt);
+    
+    try {
+        // Use OpenAI images/generations endpoint for text-to-image
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'gpt-image-1',
+                prompt: prompt,
+                n: 1,
+                size: '1024x1024',
+                response_format: 'url'
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('OpenAI API Error:', errorData);
+            throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+        }
+        
+        const data = await response.json();
+        console.log('Text-to-image response received');
+        
+        if (!data.data || data.data.length === 0) {
+            throw new Error("OpenAI API did not return any images.");
+        }
+        
+        // Convert URLs to base64 for consistency with the app
+        const images = await Promise.all(data.data.map(async (item: any) => {
+            if (item.url) {
+                try {
+                    const imageResponse = await fetch(item.url);
+                    const imageBlob = await imageResponse.blob();
+                    return new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(imageBlob);
+                    });
+                } catch (error) {
+                    console.error('Error converting URL to base64:', error);
+                    return item.url; // Fallback to URL
+                }
+            }
+            throw new Error('No image URL found in response');
+        }));
+        
+        return images;
+        
+    } catch (error) {
+        console.error("Error generating text-to-image with OpenAI:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Unknown error occurred while generating text-to-image with OpenAI.");
+    }
+};
+
 
 export const generateProductImagesOpenAI = async (
     category: Category,
@@ -84,9 +150,28 @@ export const generateProductImagesOpenAI = async (
         throw new Error("OpenAI API key is not set. Please add OPENAI_API_KEY to your .env.local file.");
     }
     
+    console.log("FormData received:", Object.keys(formData));
+    console.log("Generation type:", formData.generationType);
+    
+    // Check if this is text-to-image generation
+    if (formData.generationType === 'text-to-image') {
+        return await generateTextToImage(formData);
+    }
+    
+    // Original image editing logic
+    console.log("Product image data:", formData.productImage);
+    
     const imageFile = formData.productImage as File;
     if (!imageFile) {
-        throw new Error("Image file is missing.");
+        throw new Error("Image file is missing from form data.");
+    }
+    
+    if (!(imageFile instanceof File)) {
+        throw new Error("Product image is not a valid File object.");
+    }
+    
+    if (imageFile.size === 0) {
+        throw new Error("Image file is empty (0 bytes). Please select a valid image file.");
     }
     
     // Ensure we have a valid filename
