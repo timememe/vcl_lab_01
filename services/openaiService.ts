@@ -104,14 +104,21 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
         
         const data = await response.json();
         console.log('Text-to-image response received');
+        console.log('Response data:', JSON.stringify(data, null, 2));
         
         if (!data.data || data.data.length === 0) {
             throw new Error("OpenAI API did not return any images.");
         }
         
-        // Convert URLs to base64 for consistency with the app
+        // Handle both URL and base64 responses (like in image editing)
         const images = await Promise.all(data.data.map(async (item: any) => {
-            if (item.url) {
+            console.log('Processing item:', item);
+            
+            if (item.b64_json) {
+                console.log('Found b64_json data');
+                return `data:image/png;base64,${item.b64_json}`;
+            } else if (item.url) {
+                console.log('Found URL data:', item.url);
                 try {
                     const imageResponse = await fetch(item.url);
                     const imageBlob = await imageResponse.blob();
@@ -125,7 +132,8 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
                     return item.url; // Fallback to URL
                 }
             }
-            throw new Error('No image URL found in response');
+            console.error('No image data found in item:', item);
+            throw new Error('No image data found in response');
         }));
         
         return images;
