@@ -7,7 +7,7 @@ const inferDefaultBase = (): string => {
 
   const origin = window.location.origin;
   const isLocalHost = origin.includes('localhost') || origin.includes('127.0.0.1');
-  return isLocalHost ? 'http://localhost:10000' : '';
+  return isLocalHost ? 'http://localhost:4000' : '';
 };
 
 const envBase = (import.meta.env?.VITE_API_BASE_URL ?? '').trim().replace(/\/$/, '');
