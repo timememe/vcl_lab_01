@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Save, Settings2, Shield, ArrowLeft, RotateCcw } from 'lucide-react';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { fetchUsage, updateUsageLimits, resetUsage } from '../../services/usageService';

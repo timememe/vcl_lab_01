@@ -28,6 +28,7 @@ const App: React.FC = () => {
     const localized = t(key);
     return localized === key ? fallback : localized;
   }, [t]);
+  const unlimitedLabel = translate('admin_limit_unlimited', 'Unlimited');
   const { user, logout } = useAuth();
 
   useEffect(() => {
