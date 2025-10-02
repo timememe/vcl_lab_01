@@ -19,12 +19,14 @@
 
 3. **Configure Service**
 
+   **⚠️ IMPORTANT:** Use these exact commands:
+
    **Build Command:**
    ```bash
    npm install && npm run build
    ```
 
-   **Start Command:**
+   **Start Command:** (NOT `npm run dev`!)
    ```bash
    npm start
    ```
@@ -121,6 +123,22 @@ render logs -f <service-name>
 
 ## 🐛 Troubleshooting
 
+### Port Conflict Error (EADDRINUSE)
+
+**Error:** `Error: listen EADDRINUSE: address already in use :::10000`
+
+**Cause:** Start command is `npm run dev` instead of `npm start`
+
+**Solution:**
+1. Go to Render Dashboard → Your Service
+2. Settings → Build & Deploy
+3. Change **Start Command** from `npm run dev` to `npm start`
+4. Save and redeploy
+
+**Why:** `npm run dev` runs both Vite and API on same port. `npm start` runs single production server.
+
+---
+
 ### Build Fails
 
 **Error:** `npm install` fails
@@ -169,6 +187,20 @@ npm run build
 1. Ensure `npm run build` completes successfully
 2. Check build logs for errors
 3. Verify `dist/` folder exists after build
+
+### MIME type errors (text/html instead of JavaScript)
+
+**Error:** `Failed to load module script: Expected a JavaScript module but the server responded with a MIME type of "text/html"`
+
+**Cause:** Server fallback returning HTML for all routes (old bug, now fixed)
+
+**Solution:**
+1. Pull latest code with fixed `server/index.js`
+2. Redeploy on Render
+3. Verify static files have correct MIME types:
+   - JS files: `application/javascript`
+   - CSS files: `text/css`
+   - HTML files: `text/html`
 
 ---
 

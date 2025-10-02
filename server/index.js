@@ -12,8 +12,10 @@ import {
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
 
 const app = express();
-// Use PORT from Render, fallback to API_PORT or 4000
-const PORT = process.env.PORT || process.env.API_PORT || 4000;
+// In production, use Render's PORT. In development, use API_PORT or 4000
+const PORT = process.env.NODE_ENV === 'production'
+  ? (process.env.PORT || 4000)
+  : (process.env.API_PORT || 4000);
 
 app.use(cors());
 app.use(express.json());
@@ -358,13 +360,24 @@ if (process.env.NODE_ENV === 'production') {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
+  // Serve static files with correct MIME types
   app.use(express.static(path.join(__dirname, '..', 'dist')));
 
-  // Fallback to index.html for SPA routing
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  // Fallback to index.html for SPA routing (only for HTML requests, not assets)
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api')) {
+      return next();
     }
+
+    // Skip static file extensions
+    const ext = path.extname(req.path);
+    if (ext && ext !== '.html') {
+      return next();
+    }
+
+    // Send index.html for SPA routes
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
 }
 
