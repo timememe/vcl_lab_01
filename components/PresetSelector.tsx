@@ -4,7 +4,6 @@ import { brandService } from '../services/brandService';
 import type { Brand, Product } from '../types';
 
 interface PresetSelectorProps {
-  categoryId: string;
   onPresetSelect: (preset: Product) => void;
   onUploadSelect: () => void;
   selectedPreset?: Product | null;
@@ -12,7 +11,6 @@ interface PresetSelectorProps {
 }
 
 const PresetSelector: React.FC<PresetSelectorProps> = ({
-  categoryId,
   onPresetSelect,
   onUploadSelect,
   selectedPreset,
@@ -23,20 +21,17 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load brands and filter products by category
+  // Load brands and their products (filtered by user's assigned brands)
   useEffect(() => {
     const loadBrands = async () => {
       try {
         const data = await brandService.getBrands();
         setBrands(data);
 
-        // Flatten all products from all brands and filter by category
+        // Flatten all products from all assigned brands
+        // No category filtering - only show products from user's assigned brands
         const allProducts = data.flatMap(brand => brand.products);
-        // Show all products for 'product-photo' category, otherwise filter by product category
-        const categoryProducts = categoryId === 'product-photo'
-          ? allProducts
-          : allProducts.filter(product => !categoryId || product.category === categoryId);
-        setProducts(categoryProducts);
+        setProducts(allProducts);
       } catch (err) {
         console.error('Failed to load brands:', err);
       } finally {
@@ -44,7 +39,7 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
       }
     };
     loadBrands();
-  }, [categoryId]);
+  }, []);
 
   return (
     <div className="space-y-4">

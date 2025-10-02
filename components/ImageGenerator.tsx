@@ -212,7 +212,6 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
             {field.type === 'file' && field.name === 'productImage' ? (
                 <div className="space-y-4">
                   <PresetSelector
-                    categoryId={category.id}
                     selectedMode={inputMode}
                     selectedPreset={selectedPreset}
                     onPresetSelect={handlePresetSelect}
