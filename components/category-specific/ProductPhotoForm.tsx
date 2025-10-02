@@ -334,13 +334,28 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
                               }`}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="font-semibold text-sm">{product.name}</div>
+                                {/* Product Image */}
+                                <div className="w-12 h-12 rounded-md overflow-hidden bg-white border border-gray-200 flex-shrink-0">
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48"%3E%3Crect fill="%23f3f4f6" width="48" height="48"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="10"%3ENo img%3C/text%3E%3C/svg%3E';
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="flex-1">
+                                  <div className="font-semibold text-sm">{product.name}</div>
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {product.presets.concept} • {product.presets.lighting} lighting
+                                  </div>
+                                </div>
+
                                 {selectedProduct?.id === product.id && (
-                                  <span className="ml-auto text-red-500">✓</span>
+                                  <span className="text-red-500 text-lg">✓</span>
                                 )}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                {product.presets.concept} • {product.presets.lighting} lighting
                               </div>
                             </button>
                           ))}

@@ -10,6 +10,7 @@
           "id": "dirol-spearmint",
           "name": "Dirol Spearmint",
           "category": "chewing-gum",
+          "image": "/products/dirol-spearmint.png",
           "presets": {
             "background": "white",
             "lighting": "soft",
@@ -27,6 +28,7 @@
           "id": "dirol-watermelon",
           "name": "Dirol Watermelon",
           "category": "chewing-gum",
+          "image": "/products/dirol-watermelon.png",
           "presets": {
             "background": "gradient",
             "lighting": "bright",
@@ -44,6 +46,7 @@
           "id": "dirol-white",
           "name": "Dirol White",
           "category": "chewing-gum",
+          "image": "/products/dirol-white.png",
           "presets": {
             "background": "white",
             "lighting": "professional",
@@ -69,6 +72,7 @@
           "id": "oreo-classic",
           "name": "Oreo Classic",
           "category": "cookies",
+          "image": "/products/oreo-classic.png",
           "presets": {
             "background": "studio",
             "lighting": "dramatic",
@@ -86,6 +90,7 @@
           "id": "oreo-golden",
           "name": "Oreo Golden",
           "category": "cookies",
+          "image": "/products/oreo-golden.png",
           "presets": {
             "background": "natural",
             "lighting": "golden",
@@ -103,6 +108,7 @@
           "id": "oreo-doublestuft",
           "name": "Oreo Double Stuf",
           "category": "cookies",
+          "image": "/products/oreo-doublestuft.png",
           "presets": {
             "background": "minimalist",
             "lighting": "bright",
@@ -120,6 +126,7 @@
           "id": "oreo-thins",
           "name": "Oreo Thins",
           "category": "cookies",
+          "image": "/products/oreo-thins.png",
           "presets": {
             "background": "white",
             "lighting": "soft",

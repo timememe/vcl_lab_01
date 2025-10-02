@@ -41,6 +41,7 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  image: string;
   presets: ProductPresets;
   promptTemplate: string;
 }
