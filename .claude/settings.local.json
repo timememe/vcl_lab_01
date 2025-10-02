@@ -9,7 +9,10 @@
       "Bash(pkill:*)",
       "Bash(node:*)",
       "Bash(taskkill:*)",
-      "Bash(npm run preview:*)"
+      "Bash(npm run preview:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(curl -X POST http://localhost:4000/api/login -H \"Content-Type: application/json\" -d \"{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"admin123\"\"}\")",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

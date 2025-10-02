@@ -1,11 +1,15 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import bcrypt from 'bcryptjs';
+import {
+  userQueries,
+  activityQueries,
+  usageLimitQueries,
+  globalCreditsQueries,
+  getTodayDate,
+  transaction
+} from './database/db.js';
+import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
 
 const app = express();
 const PORT = process.env.API_PORT || 4000;
@@ -13,88 +17,9 @@ const PORT = process.env.API_PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-const dataDir = path.join(__dirname, 'data');
-const usageFilePath = path.join(dataDir, 'usage.json');
-const usersFilePath = path.join(dataDir, 'users.json');
-
-const DEFAULT_USAGE = () => ({
-  date: new Date().toISOString().slice(0, 10),
-  categories: {},
-  credits: {
-    dailyLimit: 100,
-    used: 0
-  }
-});
-
-const DEFAULT_USERS = {
-  users: [
-    { username: 'admin', password: 'admin123', role: 'admin' },
-    { username: 'user', password: 'user123', role: 'user' }
-  ]
-};
-
-function ensureDataFile(filePath, defaultValue) {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  if (!fs.existsSync(filePath)) {
-    const initialValue = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
-    fs.writeFileSync(filePath, JSON.stringify(initialValue, null, 2), 'utf-8');
-  }
-}
-
-ensureDataFile(usageFilePath, DEFAULT_USAGE);
-ensureDataFile(usersFilePath, DEFAULT_USERS);
-
-function readJson(filePath) {
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-function normaliseUsageRecord(data) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (!data.date || data.date !== today) {
-    const categories = Object.fromEntries(
-      Object.entries(data.categories || {}).map(([key, value]) => [key, { ...value, used: 0 }])
-    );
-    const credits = {
-      dailyLimit: data.credits?.dailyLimit ?? 100,
-      used: 0
-    };
-    return {
-      date: today,
-      categories,
-      credits
-    };
-  }
-
-  return {
-    date: data.date,
-    categories: data.categories || {},
-    credits: data.credits || { dailyLimit: 100, used: 0 }
-  };
-}
-
-function getUsageData() {
-  const stored = readJson(usageFilePath);
-  const normalised = normaliseUsageRecord(stored);
-  if (JSON.stringify(normalised) !== JSON.stringify(stored)) {
-    writeJson(usageFilePath, normalised);
-  }
-  return normalised;
-}
-
-function saveUsageData(updater) {
-  const current = getUsageData();
-  const updated = updater({ ...current, categories: { ...current.categories } });
-  writeJson(usageFilePath, updated);
-  return updated;
-}
+// ============================================================
+// Authentication endpoints
+// ============================================================
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};
@@ -103,60 +28,150 @@ app.post('/api/login', (req, res) => {
     return res.status(400).json({ message: 'Username and password are required.' });
   }
 
-  const users = readJson(usersFilePath).users || [];
-  const user = users.find((u) => u.username === username && u.password === password);
+  try {
+    const user = userQueries.findByUsername.get(username);
 
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
-  }
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
 
-  res.json({ username: user.username, role: user.role });
-});
+    const token = generateToken(user);
 
-app.get('/api/usage', (_req, res) => {
-  const usage = getUsageData();
-  res.json(usage);
-});
-
-app.post('/api/usage/limits', (req, res) => {
-  const { categories = {}, credits } = req.body || {};
-
-  const updated = saveUsageData((current) => {
-    const nextCategories = { ...current.categories };
-
-    Object.entries(categories).forEach(([categoryId, value]) => {
-      const dailyLimit = Number(value?.dailyLimit);
-      if (!Number.isFinite(dailyLimit) || dailyLimit < 0) {
-        return;
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
       }
-      const existing = nextCategories[categoryId] || { used: 0 };
-      nextCategories[categoryId] = {
-        dailyLimit,
-        used: Math.min(existing.used ?? 0, dailyLimit || existing.used || 0)
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+  try {
+    const user = userQueries.findById.get(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Usage tracking endpoints
+// ============================================================
+
+app.get('/api/usage', authMiddleware, (req, res) => {
+  try {
+    const today = getTodayDate();
+
+    // Get global credits
+    let globalCredits = globalCreditsQueries.get.get(today);
+    if (!globalCredits) {
+      globalCreditsQueries.upsert.run(today, 100, 0);
+      globalCredits = globalCreditsQueries.get.get(today);
+    }
+
+    // Get all category limits for today
+    const categoryLimits = usageLimitQueries.getAllForDate.all(today);
+
+    const categories = {};
+    categoryLimits.forEach(limit => {
+      categories[limit.category_id] = {
+        dailyLimit: limit.daily_limit,
+        used: limit.used
       };
     });
 
-    const nextCredits = { ...current.credits };
-    if (credits && typeof credits.dailyLimit !== 'undefined') {
-      const limit = Number(credits.dailyLimit);
-      if (Number.isFinite(limit) && limit >= 0) {
-        nextCredits.dailyLimit = limit;
-        nextCredits.used = Math.min(nextCredits.used, limit || nextCredits.used || 0);
+    res.json({
+      date: today,
+      categories,
+      credits: {
+        dailyLimit: globalCredits.daily_limit,
+        used: globalCredits.used
       }
-    }
-
-    return {
-      ...current,
-      categories: nextCategories,
-      credits: nextCredits
-    };
-  });
-
-  res.json(updated);
+    });
+  } catch (error) {
+    console.error('Get usage error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
-app.post('/api/usage/increment', (req, res) => {
-  const { categoryId, creditsUsed = 1 } = req.body || {};
+app.post('/api/usage/limits', authMiddleware, adminMiddleware, (req, res) => {
+  const { categories = {}, credits } = req.body || {};
+
+  try {
+    const today = getTodayDate();
+
+    transaction(() => {
+      // Update category limits
+      Object.entries(categories).forEach(([categoryId, value]) => {
+        const dailyLimit = Number(value?.dailyLimit);
+        if (!Number.isFinite(dailyLimit) || dailyLimit < 0) {
+          return;
+        }
+
+        const existing = usageLimitQueries.get.get(today, categoryId);
+        const currentUsed = existing?.used || 0;
+
+        usageLimitQueries.upsert.run(
+          today,
+          categoryId,
+          dailyLimit,
+          Math.min(currentUsed, dailyLimit || currentUsed)
+        );
+      });
+
+      // Update global credits limit
+      if (credits && typeof credits.dailyLimit !== 'undefined') {
+        const limit = Number(credits.dailyLimit);
+        if (Number.isFinite(limit) && limit >= 0) {
+          globalCreditsQueries.setLimit.run(today, limit);
+        }
+      }
+    })();
+
+    // Return updated usage
+    const updated = usageLimitQueries.getAllForDate.all(today);
+    const globalCredits = globalCreditsQueries.get.get(today);
+
+    const categoriesResult = {};
+    updated.forEach(limit => {
+      categoriesResult[limit.category_id] = {
+        dailyLimit: limit.daily_limit,
+        used: limit.used
+      };
+    });
+
+    res.json({
+      date: today,
+      categories: categoriesResult,
+      credits: {
+        dailyLimit: globalCredits.daily_limit,
+        used: globalCredits.used
+      }
+    });
+  } catch (error) {
+    console.error('Update limits error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/api/usage/increment', authMiddleware, (req, res) => {
+  const { categoryId, creditsUsed = 1, aiModel, metadata } = req.body || {};
 
   if (!categoryId) {
     return res.status(400).json({ message: 'categoryId is required.' });
@@ -168,49 +183,175 @@ app.post('/api/usage/increment', (req, res) => {
   }
 
   try {
-    const updated = saveUsageData((current) => {
-      const nextCategories = { ...current.categories };
-      const categoryEntry = nextCategories[categoryId] || { dailyLimit: 0, used: 0 };
+    const today = getTodayDate();
+    const userId = req.user.id;
 
-      const tentativeCategoryUsed = (categoryEntry.used || 0) + increment;
-      if (increment >= 0 && categoryEntry.dailyLimit && tentativeCategoryUsed > categoryEntry.dailyLimit) {
-        throw new Error('Category limit exceeded');
+    const result = transaction(() => {
+      // Check and increment category limit
+      const categoryLimit = usageLimitQueries.get.get(today, categoryId);
+      if (categoryLimit && categoryLimit.daily_limit > 0) {
+        const tentativeUsed = categoryLimit.used + increment;
+        if (tentativeUsed > categoryLimit.daily_limit) {
+          throw new Error('Category limit exceeded');
+        }
       }
-      const finalCategoryUsed = Math.max(0, tentativeCategoryUsed);
 
-      nextCategories[categoryId] = {
-        dailyLimit: categoryEntry.dailyLimit || 0,
-        used: finalCategoryUsed
-      };
-
-      const nextCredits = { ...current.credits };
-      const tentativeCreditsUsed = (nextCredits.used || 0) + increment;
-      if (increment >= 0 && nextCredits.dailyLimit && tentativeCreditsUsed > nextCredits.dailyLimit) {
-        throw new Error('Daily credits limit exceeded');
+      // Check and increment global credits
+      let globalCredits = globalCreditsQueries.get.get(today);
+      if (!globalCredits) {
+        globalCreditsQueries.upsert.run(today, 100, 0);
+        globalCredits = globalCreditsQueries.get.get(today);
       }
-      const finalCreditsUsed = Math.max(0, tentativeCreditsUsed);
 
-      nextCredits.used = finalCreditsUsed;
+      if (globalCredits.daily_limit > 0) {
+        const tentativeCreditsUsed = globalCredits.used + increment;
+        if (tentativeCreditsUsed > globalCredits.daily_limit) {
+          throw new Error('Daily credits limit exceeded');
+        }
+      }
+
+      // Increment counters
+      usageLimitQueries.increment.run(today, categoryId, increment);
+      globalCreditsQueries.increment.run(today, increment);
+
+      // Log activity
+      activityQueries.create.run(
+        userId,
+        categoryId,
+        'generate',
+        aiModel || 'unknown',
+        increment,
+        metadata ? JSON.stringify(metadata) : null
+      );
+
+      // Get updated data
+      const updatedCategory = usageLimitQueries.get.get(today, categoryId);
+      const updatedGlobal = globalCreditsQueries.get.get(today);
 
       return {
-        ...current,
-        categories: nextCategories,
-        credits: nextCredits
+        category: updatedCategory,
+        global: updatedGlobal
+      };
+    })();
+
+    // Return updated usage
+    const allCategories = usageLimitQueries.getAllForDate.all(today);
+    const categoriesResult = {};
+    allCategories.forEach(limit => {
+      categoriesResult[limit.category_id] = {
+        dailyLimit: limit.daily_limit,
+        used: limit.used
       };
     });
 
-    res.json(updated);
+    res.json({
+      date: today,
+      categories: categoriesResult,
+      credits: {
+        dailyLimit: result.global.daily_limit,
+        used: result.global.used
+      }
+    });
   } catch (error) {
-    res.status(429).json({ message: error instanceof Error ? error.message : 'Usage limit exceeded.' });
+    if (error.message.includes('limit exceeded')) {
+      return res.status(429).json({ message: error.message });
+    }
+    console.error('Increment usage error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-app.post('/api/usage/reset', (_req, res) => {
-  const reset = DEFAULT_USAGE();
-  writeJson(usageFilePath, reset);
-  res.json(reset);
+app.post('/api/usage/reset', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const today = getTodayDate();
+
+    transaction(() => {
+      // Reset global credits
+      globalCreditsQueries.upsert.run(today, 100, 0);
+
+      // Reset all category limits
+      const categories = usageLimitQueries.getAllForDate.all(today);
+      categories.forEach(cat => {
+        usageLimitQueries.upsert.run(today, cat.category_id, cat.daily_limit, 0);
+      });
+    })();
+
+    const globalCredits = globalCreditsQueries.get.get(today);
+    const categoryLimits = usageLimitQueries.getAllForDate.all(today);
+
+    const categoriesResult = {};
+    categoryLimits.forEach(limit => {
+      categoriesResult[limit.category_id] = {
+        dailyLimit: limit.daily_limit,
+        used: 0
+      };
+    });
+
+    res.json({
+      date: today,
+      categories: categoriesResult,
+      credits: {
+        dailyLimit: globalCredits.daily_limit,
+        used: 0
+      }
+    });
+  } catch (error) {
+    console.error('Reset usage error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Activity logs endpoints (admin only)
+// ============================================================
+
+app.get('/api/activity/logs', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = activityQueries.findAll.all(limit);
+
+    res.json(logs.map(log => ({
+      ...log,
+      metadata: log.metadata ? JSON.parse(log.metadata) : null
+    })));
+  } catch (error) {
+    console.error('Get activity logs error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/activity/user/:userId', authMiddleware, (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+
+    // Users can only view their own logs unless they're admin
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const limit = parseInt(req.query.limit) || 50;
+    const logs = activityQueries.findByUser.all(userId, limit);
+
+    res.json(logs.map(log => ({
+      ...log,
+      metadata: log.metadata ? JSON.parse(log.metadata) : null
+    })));
+  } catch (error) {
+    console.error('Get user activity error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Health check
+// ============================================================
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
-  console.log('Usage API server listening on port ' + PORT);
+  console.log(`✓ API server running on port ${PORT}`);
+  console.log(`✓ Database initialized with SQLite`);
+  console.log(`✓ JWT authentication enabled`);
 });

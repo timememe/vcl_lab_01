@@ -14,10 +14,15 @@ export async function updateUsageLimits(payload: UsageUpdatePayload): Promise<Us
   return updated as UsageRecord;
 }
 
-export async function incrementUsage(categoryId: string, creditsUsed = 1): Promise<UsageRecord> {
+export async function incrementUsage(
+  categoryId: string,
+  creditsUsed = 1,
+  aiModel?: string,
+  metadata?: Record<string, unknown>
+): Promise<UsageRecord> {
   const updated = await apiFetch('/api/usage/increment', {
     method: 'POST',
-    body: JSON.stringify({ categoryId, creditsUsed })
+    body: JSON.stringify({ categoryId, creditsUsed, aiModel, metadata })
   });
   return updated as UsageRecord;
 }
