@@ -37,3 +37,11 @@ dist-ssr
 temp/
 tmp/
 nul
+
+# Database files
+server/database/*.db
+server/database/*.db-shm
+server/database/*.db-wal
+
+# Legacy data files
+server/data/
