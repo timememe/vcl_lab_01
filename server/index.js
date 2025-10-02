@@ -3,6 +3,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import {
   userQueries,
+  brandQueries,
   activityQueries,
   usageLimitQueries,
   globalCreditsQueries,
@@ -341,6 +342,105 @@ app.get('/api/activity/user/:userId', authMiddleware, (req, res) => {
     })));
   } catch (error) {
     console.error('Get user activity error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Brand endpoints
+// ============================================================
+
+app.get('/api/brands', authMiddleware, (req, res) => {
+  try {
+    const user = userQueries.findById.get(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Parse user's assigned brands
+    const assignedBrandIds = user.assigned_brands ? JSON.parse(user.assigned_brands) : [];
+
+    // Get all brands if admin, or only assigned brands if user
+    const allBrands = brandQueries.findAll.all();
+    const userBrands = req.user.role === 'admin'
+      ? allBrands
+      : allBrands.filter(brand => assignedBrandIds.includes(brand.id));
+
+    // Parse products JSON for each brand
+    const brandsWithProducts = userBrands.map(brand => ({
+      ...brand,
+      products: JSON.parse(brand.products)
+    }));
+
+    res.json(brandsWithProducts);
+  } catch (error) {
+    console.error('Get brands error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/brands/:brandId', authMiddleware, (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const brand = brandQueries.findById.get(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ message: 'Brand not found' });
+    }
+
+    // Check if user has access to this brand
+    const user = userQueries.findById.get(req.user.id);
+    const assignedBrandIds = user.assigned_brands ? JSON.parse(user.assigned_brands) : [];
+
+    if (req.user.role !== 'admin' && !assignedBrandIds.includes(brandId)) {
+      return res.status(403).json({ message: 'Access denied to this brand' });
+    }
+
+    res.json({
+      ...brand,
+      products: JSON.parse(brand.products)
+    });
+  } catch (error) {
+    console.error('Get brand error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) => {
+  try {
+    const { brandId, productId } = req.params;
+    const brand = brandQueries.findById.get(brandId);
+
+    if (!brand) {
+      return res.status(404).json({ message: 'Brand not found' });
+    }
+
+    // Check access
+    const user = userQueries.findById.get(req.user.id);
+    const assignedBrandIds = user.assigned_brands ? JSON.parse(user.assigned_brands) : [];
+
+    if (req.user.role !== 'admin' && !assignedBrandIds.includes(brandId)) {
+      return res.status(403).json({ message: 'Access denied to this brand' });
+    }
+
+    const products = JSON.parse(brand.products);
+    const product = products.find(p => p.id === productId);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.json({
+      ...product,
+      brand: {
+        id: brand.id,
+        name: brand.name,
+        logo: brand.logo
+      }
+    });
+  } catch (error) {
+    console.error('Get product error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

@@ -18,23 +18,46 @@ db.pragma('journal_mode = WAL');
 const schema = fs.readFileSync(schemaPath, 'utf-8');
 db.exec(schema);
 
-// Seed default users if table is empty
-function seedDefaultUsers() {
-  const count = db.prepare('SELECT COUNT(*) as count FROM users').get();
+// Seed default users and brands
+function seedDefaultData() {
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
 
-  if (count.count === 0) {
+  if (userCount.count === 0) {
     const adminPasswordHash = bcrypt.hashSync('admin123', 10);
     const userPasswordHash = bcrypt.hashSync('user123', 10);
 
-    const insertUser = db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
-    insertUser.run('admin', adminPasswordHash, 'admin');
-    insertUser.run('user', userPasswordHash, 'user');
+    // Admin gets all brands, user gets only Dirol
+    const insertUser = db.prepare('INSERT INTO users (username, password_hash, role, assigned_brands) VALUES (?, ?, ?, ?)');
+    insertUser.run('admin', adminPasswordHash, 'admin', JSON.stringify(['dirol', 'oreo']));
+    insertUser.run('user', userPasswordHash, 'user', JSON.stringify(['dirol']));
 
-    console.log('✓ Default users created (admin/admin123, user/user123)');
+    console.log('✓ Default users created (admin: all brands, user: Dirol only)');
+  }
+
+  // Seed brands from brands-data.json
+  const brandCount = db.prepare('SELECT COUNT(*) as count FROM brands').get();
+
+  if (brandCount.count === 0) {
+    const brandsDataPath = path.join(__dirname, 'brands-data.json');
+    const brandsData = JSON.parse(fs.readFileSync(brandsDataPath, 'utf-8'));
+
+    const insertBrand = db.prepare('INSERT INTO brands (id, name, logo, description, products) VALUES (?, ?, ?, ?, ?)');
+
+    brandsData.brands.forEach(brand => {
+      insertBrand.run(
+        brand.id,
+        brand.name,
+        brand.logo,
+        brand.description,
+        JSON.stringify(brand.products)
+      );
+    });
+
+    console.log(`✓ ${brandsData.brands.length} brands seeded (Dirol, Oreo)`);
   }
 }
 
-seedDefaultUsers();
+seedDefaultData();
 
 // Helper to get today's date in YYYY-MM-DD format
 export function getTodayDate() {
@@ -44,11 +67,21 @@ export function getTodayDate() {
 // User operations
 export const userQueries = {
   findByUsername: db.prepare('SELECT * FROM users WHERE username = ?'),
-  findById: db.prepare('SELECT id, username, role, created_at FROM users WHERE id = ?'),
-  create: db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)'),
+  findById: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users WHERE id = ?'),
+  create: db.prepare('INSERT INTO users (username, password_hash, role, assigned_brands) VALUES (?, ?, ?, ?)'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  updateBrands: db.prepare('UPDATE users SET assigned_brands = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   delete: db.prepare('DELETE FROM users WHERE id = ?'),
-  list: db.prepare('SELECT id, username, role, created_at FROM users ORDER BY created_at DESC')
+  list: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users ORDER BY created_at DESC')
+};
+
+// Brand operations
+export const brandQueries = {
+  findById: db.prepare('SELECT * FROM brands WHERE id = ?'),
+  findAll: db.prepare('SELECT * FROM brands ORDER BY name'),
+  create: db.prepare('INSERT INTO brands (id, name, logo, description, products) VALUES (?, ?, ?, ?, ?)'),
+  update: db.prepare('UPDATE brands SET name = ?, logo = ?, description = ?, products = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  delete: db.prepare('DELETE FROM brands WHERE id = ?')
 };
 
 // Activity log operations

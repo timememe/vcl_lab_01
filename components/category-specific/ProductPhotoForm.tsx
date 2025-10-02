@@ -1,12 +1,13 @@
 import React from 'react';
-import { Camera, Upload, Sparkles, Play, Home, Zap, Image, Type, Settings, Monitor, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Camera, Upload, Sparkles, Play, Home, Zap, Image, Type, Settings, Monitor, Loader2, CheckCircle, XCircle, Package } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useLocalization } from '../../contexts/LocalizationContext';
-import type { Category } from '../../types';
+import { brandService } from '../../services/brandService';
+import type { Category, Brand, Product } from '../../types';
 
 interface ProductPhotoFormProps {
   category: Category;
@@ -18,12 +19,12 @@ interface ProductPhotoFormProps {
 
 type PreviewState = 'empty' | 'preview' | 'loading' | 'result' | 'error';
 
-const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({ 
-  category, 
-  onGenerate, 
-  onBack, 
-  error, 
-  initialData 
+const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
+  category,
+  onGenerate,
+  onBack,
+  error,
+  initialData
 }) => {
   const { t } = useLocalization();
   const [formData, setFormData] = React.useState<Record<string, string | File>>(
@@ -34,6 +35,41 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
   const [productImagePreview, setProductImagePreview] = React.useState<string | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = React.useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = React.useState<string[]>([]);
+
+  // Brand/Product state
+  const [brands, setBrands] = React.useState<Brand[]>([]);
+  const [selectedBrand, setSelectedBrand] = React.useState<Brand | null>(null);
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
+  const [loadingBrands, setLoadingBrands] = React.useState(true);
+
+  // Load brands on mount
+  React.useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const data = await brandService.getBrands();
+        setBrands(data);
+      } catch (err) {
+        console.error('Failed to load brands:', err);
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+    loadBrands();
+  }, []);
+
+  // Apply preset when product is selected
+  React.useEffect(() => {
+    if (selectedProduct) {
+      const prompt = selectedProduct.promptTemplate.replace('{productName}', formData.productName as string || selectedProduct.name);
+      setFormData(prev => ({
+        ...prev,
+        brandId: selectedBrand?.id || '',
+        productId: selectedProduct.id,
+        customPrompt: prompt,
+        presetColors: JSON.stringify(selectedProduct.presets.colors)
+      }));
+    }
+  }, [selectedProduct, selectedBrand]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,13 +267,89 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
         <div className="w-full lg:w-1/2 p-4 lg:p-6 overflow-y-auto flex-shrink-0 max-h-screen lg:max-h-none">
           <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-6">
             {/* Block 1: Product & Template Setup */}
-            <BlockContainer 
-              isActive={activeBlock === 1} 
-              number={1} 
-              title="Product & Template Setup" 
+            <BlockContainer
+              isActive={activeBlock === 1}
+              number={1}
+              title="Product & Template Setup"
               icon={Image}
             >
               <div className="space-y-4 lg:space-y-6">
+                {/* Brand Selection */}
+                {loadingBrands ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    Loading brands...
+                  </div>
+                ) : brands.length > 0 ? (
+                  <div className="space-y-3 lg:space-y-4">
+                    <Label className="text-base lg:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                      <Package className="w-4 h-4 lg:w-5 lg:h-5" />
+                      Select Brand & Product
+                    </Label>
+
+                    {/* Brand Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Brand</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {brands.map((brand) => (
+                          <button
+                            key={brand.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setSelectedProduct(null);
+                            }}
+                            className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+                              selectedBrand?.id === brand.id
+                                ? 'border-red-500 bg-red-50 shadow-md'
+                                : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="font-semibold text-sm">{brand.name}</div>
+                              {selectedBrand?.id === brand.id && (
+                                <span className="ml-auto text-red-500">✓</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">{brand.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Product Selection */}
+                    {selectedBrand && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Product</Label>
+                        <div className="grid grid-cols-1 gap-2">
+                          {selectedBrand.products.map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onClick={() => setSelectedProduct(product)}
+                              className={`p-3 rounded-lg border-2 transition-all duration-200 text-left ${
+                                selectedProduct?.id === product.id
+                                  ? 'border-red-500 bg-red-50 shadow-md'
+                                  : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="font-semibold text-sm">{product.name}</div>
+                                {selectedProduct?.id === product.id && (
+                                  <span className="ml-auto text-red-500">✓</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                {product.presets.concept} • {product.presets.lighting} lighting
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {/* Product Upload */}
                 <div className="space-y-3 lg:space-y-4">
                   <Label className="text-base lg:text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -332,16 +444,64 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
             </BlockContainer>
 
             {/* Block 2: Custom Prompt */}
-            <BlockContainer 
-              isActive={activeBlock === 2} 
-              number={2} 
-              title="Custom Prompt & Style" 
+            <BlockContainer
+              isActive={activeBlock === 2}
+              number={2}
+              title="Custom Prompt & Style"
               icon={Type}
             >
               <div className="space-y-3 lg:space-y-4">
+                {/* Show preset info if product is selected */}
+                {selectedProduct && (
+                  <div className="p-3 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-red-600" />
+                      <span className="font-semibold text-sm text-red-900">Preset Applied: {selectedProduct.name}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex gap-1">
+                        <span className="text-gray-600">Background:</span>
+                        <span className="font-medium text-gray-800">{selectedProduct.presets.background}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <span className="text-gray-600">Lighting:</span>
+                        <span className="font-medium text-gray-800">{selectedProduct.presets.lighting}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <span className="text-gray-600">Camera:</span>
+                        <span className="font-medium text-gray-800">{selectedProduct.presets.cameraAngle}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <span className="text-gray-600">Concept:</span>
+                        <span className="font-medium text-gray-800">{selectedProduct.presets.concept}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-600">Colors:</span>
+                      <div className="flex gap-1">
+                        <div
+                          className="w-4 h-4 rounded border border-gray-300"
+                          style={{ backgroundColor: selectedProduct.presets.colors.primary }}
+                          title={selectedProduct.presets.colors.primary}
+                        />
+                        <div
+                          className="w-4 h-4 rounded border border-gray-300"
+                          style={{ backgroundColor: selectedProduct.presets.colors.secondary }}
+                          title={selectedProduct.presets.colors.secondary}
+                        />
+                        <div
+                          className="w-4 h-4 rounded border border-gray-300"
+                          style={{ backgroundColor: selectedProduct.presets.colors.accent }}
+                          title={selectedProduct.presets.colors.accent}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <Label className="text-base lg:text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 lg:w-5 lg:h-5" />
-                  Describe your vision
+                  {selectedProduct ? 'Generated Prompt (Editable)' : 'Describe your vision'}
                 </Label>
                 <Textarea
                   value={formData.customPrompt as string || ''}

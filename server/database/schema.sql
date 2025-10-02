@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
+    assigned_brands TEXT, -- JSON array of brand IDs
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,6 +41,17 @@ CREATE TABLE IF NOT EXISTS global_credits (
     date TEXT NOT NULL UNIQUE,
     daily_limit INTEGER DEFAULT 100,
     used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Brands table
+CREATE TABLE IF NOT EXISTS brands (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    logo TEXT,
+    description TEXT,
+    products TEXT NOT NULL, -- JSON array of products
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
