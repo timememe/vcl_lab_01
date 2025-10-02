@@ -6,7 +6,7 @@ import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services
 import { collageAiService, CollageAiRequest } from '../../services/collageAiService';
 import { collageExportService } from '../../services/collageExport';
 import { useLocalization } from '../../contexts/LocalizationContext';
-import { ProductPreset, getPresetsForCategory } from '../../presets';
+import { Product } from '../../types';
 import PresetSelector from '../PresetSelector';
 import CollageCanvas from './CollageCanvas';
 import BackgroundManager from './BackgroundManager';
@@ -46,7 +46,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
 
   // Preset selection state
   const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
-  const [selectedPreset, setSelectedPreset] = useState<ProductPreset | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
 
   // Collage state
   const [collageState, setCollageState] = useState<CollageState>(() => ({
@@ -142,7 +142,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     // Add preset data if preset mode is selected
     if (selectedMode === 'preset' && selectedPreset) {
       aiFormData.selectedPreset = selectedPreset.id;
-      aiFormData.presetImage = selectedPreset.imagePath;
+      aiFormData.presetImage = selectedPreset.image;
       aiFormData.presetPrompt = selectedPreset.promptTemplate;
     }
 
