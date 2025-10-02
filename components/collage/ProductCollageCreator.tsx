@@ -143,6 +143,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     if (selectedMode === 'preset' && selectedPreset) {
       aiFormData.selectedPreset = selectedPreset.id;
       aiFormData.presetImage = selectedPreset.imagePath;
+      aiFormData.presetPrompt = selectedPreset.promptTemplate;
     }
 
     onGenerate(aiFormData);
