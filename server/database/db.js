@@ -18,6 +18,20 @@ db.pragma('journal_mode = WAL');
 const schema = fs.readFileSync(schemaPath, 'utf-8');
 db.exec(schema);
 
+// Run migrations for existing databases
+function runMigrations() {
+  // Check if assigned_brands column exists
+  const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+  const hasAssignedBrands = tableInfo.some(col => col.name === 'assigned_brands');
+
+  if (!hasAssignedBrands) {
+    console.log('⚙️  Running migration: Adding assigned_brands column to users table');
+    db.exec('ALTER TABLE users ADD COLUMN assigned_brands TEXT');
+  }
+}
+
+runMigrations();
+
 // Seed default users and brands
 function seedDefaultData() {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
@@ -32,6 +46,18 @@ function seedDefaultData() {
     insertUser.run('user', userPasswordHash, 'user', JSON.stringify(['dirol']));
 
     console.log('✓ Default users created (admin: all brands, user: Dirol only)');
+  } else {
+    // Update existing users with assigned_brands if they don't have it
+    const users = db.prepare('SELECT id, username, role, assigned_brands FROM users').all();
+    const updateBrands = db.prepare('UPDATE users SET assigned_brands = ? WHERE id = ?');
+
+    users.forEach(user => {
+      if (!user.assigned_brands) {
+        const brands = user.role === 'admin' ? ['dirol', 'oreo'] : ['dirol'];
+        updateBrands.run(JSON.stringify(brands), user.id);
+        console.log(`⚙️  Assigned brands to existing user: ${user.username}`);
+      }
+    });
   }
 
   // Seed brands from brands-data.json
