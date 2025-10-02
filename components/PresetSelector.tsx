@@ -32,9 +32,10 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
 
         // Flatten all products from all brands and filter by category
         const allProducts = data.flatMap(brand => brand.products);
-        const categoryProducts = allProducts.filter(
-          product => !categoryId || product.category === categoryId || categoryId === 'product-photo'
-        );
+        // Show all products for 'product-photo' category, otherwise filter by product category
+        const categoryProducts = categoryId === 'product-photo'
+          ? allProducts
+          : allProducts.filter(product => !categoryId || product.category === categoryId);
         setProducts(categoryProducts);
       } catch (err) {
         console.error('Failed to load brands:', err);
