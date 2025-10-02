@@ -76,8 +76,24 @@ const createFormDataForOpenAI = async (file: File, prompt: string): Promise<Form
 
 // Function for text-to-image generation
 const generateTextToImage = async (formData: Record<string, string | File>): Promise<string[]> => {
-    const prompt = formData.prompt as string || formData.customRequest as string || 'Generate a professional product image';
-    
+    // Use presetPrompt if available (from product preset), otherwise fall back to custom request or default
+    let prompt = formData.presetPrompt as string || formData.prompt as string || formData.customRequest as string || 'Generate a professional product image';
+
+    // Replace placeholder variables in preset template if present
+    if (formData.presetPrompt && prompt.includes('{')) {
+        // Replace {productName} with actual product name if available
+        const productName = formData.productName as string || 'product';
+        prompt = prompt.replace(/{productName}/g, productName);
+
+        // Replace other common placeholders that might be in the template
+        Object.keys(formData).forEach(key => {
+            if (typeof formData[key] === 'string') {
+                const placeholder = `{${key}}`;
+                prompt = prompt.replace(new RegExp(placeholder, 'g'), formData[key] as string);
+            }
+        });
+    }
+
     console.log("Text-to-image prompt:", prompt);
     
     try {
