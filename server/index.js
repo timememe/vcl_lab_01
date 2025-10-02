@@ -12,7 +12,8 @@ import {
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
 
 const app = express();
-const PORT = process.env.API_PORT || 4000;
+// Use PORT from Render, fallback to API_PORT or 4000
+const PORT = process.env.PORT || process.env.API_PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
@@ -350,8 +351,28 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const path = await import('path');
+  const { fileURLToPath } = await import('url');
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  app.use(express.static(path.join(__dirname, '..', 'dist')));
+
+  // Fallback to index.html for SPA routing
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    }
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`✓ API server running on port ${PORT}`);
   console.log(`✓ Database initialized with SQLite`);
   console.log(`✓ JWT authentication enabled`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`✓ Serving static files from dist/`);
+  }
 });
