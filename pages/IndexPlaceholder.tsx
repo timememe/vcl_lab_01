@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 
 // Глобальные переменные анимации
-const MAIN_IMAGE_SIZE = 600; // размер главного изображения в пикселях
+const MAIN_IMAGE_SIZE = 420; // размер главного изображения в пикселях
 const MAIN_ANIMATION_SPEED = 8000; // скорость выезда главного изображения (мс)
 const CLONE_MIN_SIZE = 100; // минимальный размер клонов
 const CLONE_MAX_SIZE = 250; // максимальный размер клонов
@@ -20,6 +20,7 @@ interface CloneImage {
   endY: number;
   duration: number;
   delay: number;
+  rotation: number; // угол поворота к направлению движения
 }
 
 const IndexPlaceholder: React.FC = () => {
@@ -44,27 +45,35 @@ const IndexPlaceholder: React.FC = () => {
 
         // Случайный край экрана: левый, правый, нижний
         const edge = Math.floor(Math.random() * 3);
-        let startX, startY, endX, endY;
+        let startX, startY, endX, endY, rotation;
 
         if (edge === 0) {
-          // Левый край - выезжает слева
+          // Левый край - выезжает слева направо
           startX = -size;
-          startY = Math.random() * window.innerHeight; // случайная высота
+          startY = Math.random() * window.innerHeight;
           endX = Math.random() * (window.innerWidth * 0.4);
           endY = Math.random() * window.innerHeight;
+          // Рассчитываем угол поворота к направлению движения
+          const dx = endX - startX;
+          const dy = endY - startY;
+          rotation = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // +90 чтобы верх смотрел по направлению
         } else if (edge === 1) {
-          // Правый край - выезжает справа
+          // Правый край - выезжает справа налево
           startX = window.innerWidth + size;
-          startY = Math.random() * window.innerHeight; // случайная высота
+          startY = Math.random() * window.innerHeight;
           endX = window.innerWidth - Math.random() * (window.innerWidth * 0.4);
           endY = Math.random() * window.innerHeight;
+          // Рассчитываем угол поворота к направлению движения
+          const dx = endX - startX;
+          const dy = endY - startY;
+          rotation = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
         } else {
           // Нижний край - выезжает снизу вверх
           startX = Math.random() * window.innerWidth;
           startY = window.innerHeight + size;
           endX = startX;
-          // Нижняя часть изображения не должна пересекать нижнюю границу экрана
           endY = Math.max(0, window.innerHeight - size - Math.random() * (window.innerHeight * 0.6));
+          rotation = 0; // вертикально вверх, без поворота
         }
 
         newClones.push({
@@ -75,7 +84,8 @@ const IndexPlaceholder: React.FC = () => {
           endX,
           endY,
           duration,
-          delay
+          delay,
+          rotation
         });
       }
 
@@ -131,7 +141,8 @@ const IndexPlaceholder: React.FC = () => {
             width: `${clone.size}px`,
             left: `${clone.startX}px`,
             top: `${clone.startY}px`,
-            animation: `moveClone-${clone.id} ${clone.duration}ms ease-in-out ${clone.delay}ms forwards`,
+            animation: `moveClone-${clone.id} ${clone.duration}ms ease-in-out ${clone.delay}ms forwards, rotateClone-${clone.id} ${clone.duration}ms linear ${clone.delay}ms infinite`,
+            transformOrigin: 'center center'
           }}
         >
           <img
@@ -149,6 +160,14 @@ const IndexPlaceholder: React.FC = () => {
                 to {
                   left: ${clone.endX}px;
                   top: ${clone.endY}px;
+                }
+              }
+              @keyframes rotateClone-${clone.id} {
+                from {
+                  transform: rotate(${clone.rotation}deg);
+                }
+                to {
+                  transform: rotate(${clone.rotation + 360}deg);
                 }
               }
             `}
