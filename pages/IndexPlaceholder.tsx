@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 
 // Глобальные переменные анимации
-const MAIN_IMAGE_SIZE = 300; // размер главного изображения в пикселях
+const MAIN_IMAGE_SIZE = 600; // размер главного изображения в пикселях
 const MAIN_ANIMATION_SPEED = 8000; // скорость выезда главного изображения (мс)
 const CLONE_MIN_SIZE = 100; // минимальный размер клонов
 const CLONE_MAX_SIZE = 250; // максимальный размер клонов
@@ -42,28 +42,29 @@ const IndexPlaceholder: React.FC = () => {
         const duration = Math.floor(Math.random() * (CLONE_MAX_SPEED - CLONE_MIN_SPEED + 1)) + CLONE_MIN_SPEED;
         const delay = Math.random() * 2000; // случайная задержка до 2 секунд
 
-        // Случайное направление: слева, справа, снизу
-        const direction = Math.floor(Math.random() * 3);
+        // Случайный край экрана: левый, правый, нижний
+        const edge = Math.floor(Math.random() * 3);
         let startX, startY, endX, endY;
 
-        if (direction === 0) {
-          // Слева
+        if (edge === 0) {
+          // Левый край - выезжает слева
           startX = -size;
-          startY = Math.random() * window.innerHeight;
-          endX = Math.random() * (window.innerWidth * 0.3);
+          startY = Math.random() * window.innerHeight; // случайная высота
+          endX = Math.random() * (window.innerWidth * 0.4);
           endY = Math.random() * window.innerHeight;
-        } else if (direction === 1) {
-          // Справа
+        } else if (edge === 1) {
+          // Правый край - выезжает справа
           startX = window.innerWidth + size;
-          startY = Math.random() * window.innerHeight;
-          endX = window.innerWidth - Math.random() * (window.innerWidth * 0.3);
+          startY = Math.random() * window.innerHeight; // случайная высота
+          endX = window.innerWidth - Math.random() * (window.innerWidth * 0.4);
           endY = Math.random() * window.innerHeight;
         } else {
-          // Снизу
+          // Нижний край - выезжает снизу вверх
           startX = Math.random() * window.innerWidth;
           startY = window.innerHeight + size;
-          endX = Math.random() * window.innerWidth;
-          endY = window.innerHeight - Math.random() * (window.innerHeight * 0.5);
+          endX = startX;
+          // Нижняя часть изображения не должна пересекать нижнюю границу экрана
+          endY = Math.max(0, window.innerHeight - size - Math.random() * (window.innerHeight * 0.6));
         }
 
         newClones.push({
@@ -136,7 +137,7 @@ const IndexPlaceholder: React.FC = () => {
           <img
             src="/pages/assets/fil.png"
             alt={`Clone ${clone.id}`}
-            className="w-full h-auto opacity-70"
+            className="w-full h-auto"
           />
           <style>
             {`
