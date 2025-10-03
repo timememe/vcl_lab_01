@@ -22,7 +22,9 @@
       "Bash(git push:*)",
       "Bash(tasklist)",
       "Bash(findstr:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(cat:*)",
+      "Bash(del serverdatabaseapp.db)"
     ],
     "deny": [],
     "ask": []

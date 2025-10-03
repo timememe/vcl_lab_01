@@ -88,24 +88,50 @@ const generateImageEdit = async (formData: Record<string, string | File>, prompt
 
         console.log(`Sending image edit request with file: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
         console.log(`Prompt: ${prompt}`);
+        console.log('Calling OpenAI API...');
 
-        // Use fetch API to call OpenAI images.edit endpoint
-        const response = await fetch('https://api.openai.com/v1/images/edits', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
-            },
-            body: formDataForAPI
-        });
+        // Use fetch API to call OpenAI images.edit endpoint with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('OpenAI API Error:', errorData);
-            throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+        let data;
+        try {
+            const response = await fetch('https://api.openai.com/v1/images/edits', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                body: formDataForAPI,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            console.log(`Response status: ${response.status} ${response.statusText}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('OpenAI API Error Response:', errorText);
+
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    throw new Error(`OpenAI API Error: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+
+                throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+            }
+
+            data = await response.json();
+            console.log('Image edit response received successfully');
+        } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+                throw new Error('OpenAI API request timed out after 2 minutes');
+            }
+            throw fetchError;
         }
-
-        const data = await response.json();
-        console.log('Image edit response received');
 
         if (!data.data || data.data.length === 0) {
             throw new Error("OpenAI API did not return any images.");
