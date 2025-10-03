@@ -10,7 +10,7 @@
           "id": "dirol-spearmint",
           "name": "Dirol Spearmint",
           "category": "chewing-gum",
-          "image": "/products/product_photo_1.jpeg",
+          "image": "/products/product_photo_1.png",
           "presets": {
             "background": "white",
             "lighting": "soft",
@@ -28,7 +28,7 @@
           "id": "dirol-watermelon",
           "name": "Dirol Watermelon",
           "category": "chewing-gum",
-          "image": "/products/product_photo_2.jpeg",
+          "image": "/products/product_photo_2.png",
           "presets": {
             "background": "gradient",
             "lighting": "bright",
