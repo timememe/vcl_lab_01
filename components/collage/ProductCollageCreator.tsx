@@ -64,62 +64,69 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       return;
     }
 
-    // Build enhanced prompt from form data
-    let enhancedPrompt = 'Create a professional product photography image. ';
+    // Build modular prompt structure:
+    // 1. promptTemplate (from preset or default)
+    // 2. Background Settings
+    // 3. Additional Requests (optional)
+    // 4. Style Settings (static: advertising packshot style)
 
-    // Add style settings
-    const angleMap: Record<string, string> = {
-      'option_camera_default': 'standard product photography angle',
-      'option_camera_top': 'top-down view',
-      'option_camera_45': '45-degree angle view',
-      'option_camera_closeup': 'close-up detail shot'
-    };
+    let promptParts: string[] = [];
 
-    const conceptMap: Record<string, string> = {
-      'option_concept_warm': 'warm, natural lighting with cozy atmosphere',
-      'option_concept_modern': 'clean, modern studio lighting with minimalist background',
-      'option_concept_isolated': 'isolated on clean background with enhanced details',
-      'option_concept_lifestyle': 'dynamic lifestyle scene with natural environment'
-    };
+    // 1. Prompt Template - base description
+    let basePrompt = 'Place this product packshot';
 
-    if (formData.cameraAngle && angleMap[formData.cameraAngle as string]) {
-      enhancedPrompt += `Camera angle: ${angleMap[formData.cameraAngle as string]}. `;
+    if (selectedMode === 'preset' && selectedPreset) {
+      // Use preset template if available
+      basePrompt = selectedPreset.promptTemplate || basePrompt;
+
+      // Replace {productName} placeholder with actual product name
+      if (basePrompt.includes('{productName}')) {
+        basePrompt = basePrompt.replace(/{productName}/g, selectedPreset.name);
+      }
     }
 
-    if (formData.conceptPreset && conceptMap[formData.conceptPreset as string]) {
-      enhancedPrompt += `Style: ${conceptMap[formData.conceptPreset as string]}. `;
-    }
+    promptParts.push(basePrompt);
 
-    // Add background settings
-    if (formData.backgroundType) {
+    // 2. Background Settings - use from preset or form data
+    let backgroundDescription = '';
+
+    if (selectedMode === 'preset' && selectedPreset && selectedPreset.presets?.background) {
+      // Use background from preset
+      const presetBgMap: Record<string, string> = {
+        'white': 'on a clean white background',
+        'black': 'on an elegant black background',
+        'gradient': 'on a gradient background',
+        'studio': 'in a professional studio setup',
+        'natural': 'in a natural environment background',
+        'minimalist': 'in a minimalist scene'
+      };
+      backgroundDescription = presetBgMap[selectedPreset.presets.background] || 'on a clean background';
+    } else if (formData.backgroundType) {
+      // Use background from form
       const backgroundMap: Record<string, string> = {
-        'white': 'clean white background',
-        'black': 'elegant black background',
-        'gradient': 'gradient background',
-        'studio': 'professional studio setup',
-        'natural': 'natural environment background',
-        'minimalist': 'minimalist scene'
+        'white': 'on a clean white background',
+        'black': 'on an elegant black background',
+        'gradient': 'on a gradient background',
+        'studio': 'in a professional studio setup',
+        'natural': 'in a natural environment background',
+        'minimalist': 'in a minimalist scene'
       };
-      enhancedPrompt += `Background: ${backgroundMap[formData.backgroundType as string] || 'clean background'}. `;
+      backgroundDescription = backgroundMap[formData.backgroundType as string] || 'on a clean background';
     }
 
-    // Add lighting settings
-    if (formData.lightingStyle) {
-      const lightingMap: Record<string, string> = {
-        'soft': 'soft and even lighting',
-        'dramatic': 'dramatic shadows and lighting',
-        'bright': 'bright and airy lighting',
-        'golden': 'golden hour lighting',
-        'studio': 'professional studio lighting'
-      };
-      enhancedPrompt += `Lighting: ${lightingMap[formData.lightingStyle as string] || 'soft lighting'}. `;
+    if (backgroundDescription) {
+      promptParts.push(`which is placed ${backgroundDescription}`);
     }
 
+    // 3. Additional Requests (optional)
     if (formData.customRequest) {
-      enhancedPrompt += `Additional requirements: ${formData.customRequest}. `;
+      promptParts.push(formData.customRequest as string);
     }
 
-    enhancedPrompt += 'High-resolution, professional quality, commercial photography style.';
+    // 4. Style Settings (static - always advertising packshot)
+    promptParts.push('Advertising packshot style, high-resolution, professional quality, commercial photography.');
+
+    const enhancedPrompt = promptParts.join('. ') + '.';
 
     // Create form data for AI generation
     // Note: This is text-to-image generation, not image editing
@@ -137,8 +144,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     if (selectedMode === 'preset' && selectedPreset) {
       aiFormData.selectedPreset = selectedPreset.id;
       aiFormData.presetImage = selectedPreset.image;
-      aiFormData.presetPrompt = selectedPreset.promptTemplate;
       aiFormData.productName = selectedPreset.name;
+      // Don't set presetPrompt here - we already have the full prompt in customRequest/prompt
     }
 
     onGenerate(aiFormData);

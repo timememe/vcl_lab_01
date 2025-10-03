@@ -171,66 +171,13 @@ const generateImageEdit = async (formData: Record<string, string | File>, prompt
 
 // Function for text-to-image generation
 const generateTextToImage = async (formData: Record<string, string | File>): Promise<string[]> => {
-    // Start with base prompt from preset or custom request
-    let basePrompt = formData.presetPrompt as string || formData.prompt as string || 'Generate a professional product image';
+    // Use the already formatted prompt from customRequest or prompt field
+    // The prompt is already structured in ProductCollageCreator with all necessary parts
+    const prompt = formData.customRequest as string || formData.prompt as string || 'Generate a professional product image';
 
     console.log('FormData keys:', Object.keys(formData));
     console.log('productName in formData:', formData.productName);
-    console.log('Original basePrompt:', basePrompt);
-
-    // Replace placeholder variables in preset template if present
-    if (basePrompt.includes('{')) {
-        // Replace {productName} with actual product name if available
-        const productName = formData.productName as string || 'product';
-        basePrompt = basePrompt.replace(/{productName}/g, productName);
-        console.log('After {productName} replacement:', basePrompt);
-
-        // Replace other common placeholders that might be in the template
-        Object.keys(formData).forEach(key => {
-            if (typeof formData[key] === 'string') {
-                const placeholder = `{${key}}`;
-                basePrompt = basePrompt.replace(new RegExp(placeholder, 'g'), formData[key] as string);
-            }
-        });
-    }
-
-    // Add additional details from formData
-    const additionalDetails: string[] = [];
-
-    // Add camera angle if present
-    if (formData.cameraAngle && formData.cameraAngle !== 'option_camera_default') {
-        const cameraAngleMap: Record<string, string> = {
-            'option_camera_top': 'top-down view',
-            'option_camera_45': '45-degree angle',
-            'option_camera_side': 'side view',
-            'option_camera_close': 'close-up shot'
-        };
-        const angle = cameraAngleMap[formData.cameraAngle as string] || formData.cameraAngle as string;
-        additionalDetails.push(`Camera angle: ${angle}`);
-    }
-
-    // Add concept preset if present
-    if (formData.conceptPreset && formData.conceptPreset !== 'option_concept_modern') {
-        const conceptMap: Record<string, string> = {
-            'option_concept_lifestyle': 'dynamic lifestyle scene with natural environment',
-            'option_concept_minimalist': 'minimalist composition with negative space',
-            'option_concept_luxury': 'luxury premium setting with elegant backdrop'
-        };
-        const concept = conceptMap[formData.conceptPreset as string] || formData.conceptPreset as string;
-        additionalDetails.push(`Style: ${concept}`);
-    }
-
-    // Add custom request if present and different from base
-    if (formData.customRequest && formData.customRequest !== basePrompt) {
-        additionalDetails.push(formData.customRequest as string);
-    }
-
-    // Combine base prompt with additional details
-    const prompt = additionalDetails.length > 0
-        ? `${basePrompt}. ${additionalDetails.join('. ')}`
-        : basePrompt;
-
-    console.log("Text-to-image prompt:", prompt);
+    console.log('Final prompt for OpenAI:', prompt);
 
     // Check if we have a preset image path to load
     const presetImagePath = formData.presetImage as string;

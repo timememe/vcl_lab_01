@@ -7,10 +7,46 @@
       "description": "Жевательная резинка для свежего дыхания",
       "products": [
         {
-          "id": "dirol-spearmint",
-          "name": "Dirol Spearmint",
+          "id": "dirol-watermelon-melon",
+          "name": "Dirol Арбузно-дынный коктейль",
           "category": "chewing-gum",
-          "image": "/products/product_photo_1.png",
+          "image": "/products/dirol_1.png",
+          "presets": {
+            "background": "gradient",
+            "lighting": "bright",
+            "cameraAngle": "45deg",
+            "concept": "lifestyle",
+            "colors": {
+              "primary": "#FF6B9D",
+              "secondary": "#FFE135",
+              "accent": "#FF1493"
+            }
+          },
+          "promptTemplate": "Vibrant product photography of {productName}"
+        },
+        {
+          "id": "dirol-watermelon-fresh",
+          "name": "Dirol Арбузная свежесть",
+          "category": "chewing-gum",
+          "image": "/products/dirol_2.png",
+          "presets": {
+            "background": "gradient",
+            "lighting": "bright",
+            "cameraAngle": "top",
+            "concept": "modern_clean",
+            "colors": {
+              "primary": "#FF6B9D",
+              "secondary": "#90EE90",
+              "accent": "#00A651"
+            }
+          },
+          "promptTemplate": "Fresh and vibrant product photography of {productName}"
+        },
+        {
+          "id": "dirol-frosty-mint",
+          "name": "Dirol Морозная мята",
+          "category": "chewing-gum",
+          "image": "/products/dirol_3.png",
           "presets": {
             "background": "white",
             "lighting": "soft",
@@ -19,46 +55,10 @@
             "colors": {
               "primary": "#00A651",
               "secondary": "#FFFFFF",
-              "accent": "#005F2F"
+              "accent": "#00D4FF"
             }
           },
-          "promptTemplate": "Redraw this product photography of {productName}, sharp focus on product details"
-        },
-        {
-          "id": "dirol-watermelon",
-          "name": "Dirol Watermelon",
-          "category": "chewing-gum",
-          "image": "/products/product_photo_2.png",
-          "presets": {
-            "background": "gradient",
-            "lighting": "bright",
-            "cameraAngle": "top",
-            "concept": "lifestyle",
-            "colors": {
-              "primary": "#FF6B9D",
-              "secondary": "#90EE90",
-              "accent": "#FF1493"
-            }
-          },
-          "promptTemplate": "Vibrant product photography of {productName}, pink and green watermelon-themed packaging, playful summer vibe, dynamic lighting, gradient background transitioning from pink to light green"
-        },
-        {
-          "id": "dirol-white",
-          "name": "Dirol White",
-          "category": "chewing-gum",
-          "image": "/products/dirol-white.png",
-          "presets": {
-            "background": "white",
-            "lighting": "professional",
-            "cameraAngle": "default",
-            "concept": "isolated",
-            "colors": {
-              "primary": "#FFFFFF",
-              "secondary": "#E0E0E0",
-              "accent": "#00A6ED"
-            }
-          },
-          "promptTemplate": "Clean and minimal product photography of {productName}, pure white packaging with blue accents, premium whitening gum, clinical studio lighting, pure white background, emphasis on purity and cleanliness"
+          "promptTemplate": "Cool and refreshing product photography of {productName}"
         }
       ]
     },
