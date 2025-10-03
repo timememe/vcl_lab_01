@@ -110,7 +110,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
         ...prev,
         productImage: file,
         presetId: preset.id,
-        presetPrompt: preset.promptTemplate
+        presetPrompt: preset.promptTemplate,
+        productName: preset.name
       }));
       setImagePreview(preset.image);
     } catch (error) {
@@ -134,6 +135,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
         alert(t('alert_upload_required_image'));
         return;
     }
+    console.log('ImageGenerator formData before onGenerate:', Object.keys(formData));
+    console.log('productName before onGenerate:', formData.productName);
     onGenerate(formData);
   };
 

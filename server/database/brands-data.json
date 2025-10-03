@@ -22,7 +22,7 @@
               "accent": "#005F2F"
             }
           },
-          "promptTemplate": "Professional product photography of {productName}, mint green packaging with white accents, fresh and clean aesthetic, studio lighting, white background, sharp focus on product details"
+          "promptTemplate": "Redraw this product photography of {productName}, sharp focus on product details"
         },
         {
           "id": "dirol-watermelon",

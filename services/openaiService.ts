@@ -174,11 +174,16 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
     // Start with base prompt from preset or custom request
     let basePrompt = formData.presetPrompt as string || formData.prompt as string || 'Generate a professional product image';
 
+    console.log('FormData keys:', Object.keys(formData));
+    console.log('productName in formData:', formData.productName);
+    console.log('Original basePrompt:', basePrompt);
+
     // Replace placeholder variables in preset template if present
     if (basePrompt.includes('{')) {
         // Replace {productName} with actual product name if available
         const productName = formData.productName as string || 'product';
         basePrompt = basePrompt.replace(/{productName}/g, productName);
+        console.log('After {productName} replacement:', basePrompt);
 
         // Replace other common placeholders that might be in the template
         Object.keys(formData).forEach(key => {

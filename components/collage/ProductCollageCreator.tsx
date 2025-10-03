@@ -65,13 +65,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     }
 
     // Build enhanced prompt from form data
-    let enhancedPrompt = '';
-
-    if (selectedMode === 'preset' && selectedPreset) {
-      enhancedPrompt = `Create a professional product photography image using the preset: ${selectedPreset.nameKey}. `;
-    } else {
-      enhancedPrompt = 'Create a professional product photography image. ';
-    }
+    let enhancedPrompt = 'Create a professional product photography image. ';
 
     // Add style settings
     const angleMap: Record<string, string> = {
@@ -144,6 +138,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       aiFormData.selectedPreset = selectedPreset.id;
       aiFormData.presetImage = selectedPreset.image;
       aiFormData.presetPrompt = selectedPreset.promptTemplate;
+      aiFormData.productName = selectedPreset.name;
     }
 
     onGenerate(aiFormData);
