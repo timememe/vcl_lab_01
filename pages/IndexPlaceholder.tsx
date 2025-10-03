@@ -3,8 +3,18 @@ import { Link } from 'react-router-dom';
 
 const IndexPlaceholder: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-800 p-6">
-      <div className="max-w-xl text-center space-y-6">
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden">
+      {/* Background layer - 1.png (масштабируемый по размерам экрана) */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <img
+          src="/pages/assets/1.png"
+          alt="Background"
+          className="w-full h-full object-contain"
+        />
+      </div>
+
+      {/* Content layer */}
+      <div className="relative z-10 max-w-xl text-center space-y-6 p-6">
         <h1 className="text-4xl font-bold">Welcome</h1>
         <p className="text-lg text-gray-600">
           This is a placeholder landing page. Choose one of the available demos to continue.
@@ -23,6 +33,15 @@ const IndexPlaceholder: React.FC = () => {
             Visit Filcheck Stub
           </Link>
         </div>
+      </div>
+
+      {/* Front layer - fil.png (закреплен внизу по центру) */}
+      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-20">
+        <img
+          src="/pages/assets/fil.png"
+          alt="Foreground"
+          className="max-w-full h-auto"
+        />
       </div>
     </div>
   );
