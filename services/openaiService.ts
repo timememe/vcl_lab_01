@@ -206,10 +206,22 @@ const generateTextToImage = async (formData: Record<string, string | File>): Pro
     if (presetImagePath) {
         console.log("Loading preset image from path:", presetImagePath);
         try {
-            // Load the image from the path
-            const imageResponse = await fetch(presetImagePath);
+            // Load the image from the path (handle both absolute and relative URLs)
+            const imageUrl = presetImagePath.startsWith('http')
+                ? presetImagePath
+                : `${window.location.origin}${presetImagePath}`;
+
+            console.log("Fetching image from:", imageUrl);
+            const imageResponse = await fetch(imageUrl);
+
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+            }
+
             const imageBlob = await imageResponse.blob();
-            const imageFile = new File([imageBlob], 'product.jpg', { type: imageBlob.type });
+
+            // Ensure PNG format for OpenAI images/edits
+            const imageFile = new File([imageBlob], 'product.png', { type: 'image/png' });
 
             // Use image editing instead of generation
             console.log("Using image-to-image with preset image");
