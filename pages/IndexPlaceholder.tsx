@@ -13,11 +13,11 @@ const IndexPlaceholder: React.FC = () => {
         />
       </div>
 
-      {/* Content layer */}
-      <div className="relative z-10 max-w-xl text-center space-y-6 p-6">
+      {/* Content layer - pinned to top */}
+      <div className="absolute top-8 left-0 right-0 z-10 max-w-xl mx-auto text-center space-y-6 px-6">
         <h1 className="text-4xl font-bold">Привет!</h1>
         <p className="text-lg text-gray-600">
-          Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке! 
+          Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке!
         </p>
       </div>
 
