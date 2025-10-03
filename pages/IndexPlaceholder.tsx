@@ -15,24 +15,10 @@ const IndexPlaceholder: React.FC = () => {
 
       {/* Content layer */}
       <div className="relative z-10 max-w-xl text-center space-y-6 p-6">
-        <h1 className="text-4xl font-bold">Welcome</h1>
+        <h1 className="text-4xl font-bold">Привет!</h1>
         <p className="text-lg text-gray-600">
-          This is a placeholder landing page. Choose one of the available demos to continue.
+          Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке! 
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            to="/vcl-lab"
-            className="px-5 py-3 rounded-lg bg-red-600 text-white font-semibold shadow-sm hover:bg-red-700 transition"
-          >
-            Go to VCL Lab
-          </Link>
-          <Link
-            to="/filcheck"
-            className="px-5 py-3 rounded-lg border border-gray-200 font-semibold text-gray-700 hover:bg-gray-100 transition"
-          >
-            Visit Filcheck Stub
-          </Link>
-        </div>
       </div>
 
       {/* Front layer - fil.png (закреплен внизу по центру) */}
