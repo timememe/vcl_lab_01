@@ -13,6 +13,7 @@ const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 8
 const COLLISION_FORCE = 0.5; // сила отталкивания при столкновении
 const CURSOR_RADIUS = 100; // радиус отталкивания вокруг курсора
 const CURSOR_FORCE = 1.5; // сила отталкивания от курсора
+const HEADER_TOP_OFFSET = 128; // отступ сверху для заголовка и подзаголовка (в пикселях)
 
 interface ClonePhysics {
   id: number;
@@ -107,22 +108,27 @@ const IndexPlaceholder: React.FC = () => {
           }
         });
 
-        // Проверка столкновений с курсором (только когда нажато)
-        if (cursorPos && isPressed) {
-          updated.forEach(clone => {
-            const dx = clone.x - cursorPos.x;
-            const dy = clone.y - cursorPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Проверка столкновений с курсором
+        // На десктопе - всегда когда курсор наведен, на тач - только при нажатии
+        if (cursorPos) {
+          const isActive = isPressed || window.matchMedia('(hover: hover)').matches;
 
-            if (distance < CURSOR_RADIUS + clone.size / 2) {
-              // Отталкивание от курсора
-              const angle = Math.atan2(dy, dx);
-              const force = CURSOR_FORCE * (1 - distance / (CURSOR_RADIUS + clone.size / 2));
+          if (isActive) {
+            updated.forEach(clone => {
+              const dx = clone.x - cursorPos.x;
+              const dy = clone.y - cursorPos.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
 
-              clone.vx += Math.cos(angle) * force;
-              clone.vy += Math.sin(angle) * force;
-            }
-          });
+              if (distance < CURSOR_RADIUS + clone.size / 2) {
+                // Отталкивание от курсора
+                const angle = Math.atan2(dy, dx);
+                const force = CURSOR_FORCE * (1 - distance / (CURSOR_RADIUS + clone.size / 2));
+
+                clone.vx += Math.cos(angle) * force;
+                clone.vy += Math.sin(angle) * force;
+              }
+            });
+          }
         }
 
         // Проверка столкновений между клонами
@@ -189,17 +195,8 @@ const IndexPlaceholder: React.FC = () => {
     setCursorPos({ x: e.clientX, y: e.clientY });
   };
 
-  const handleMouseDown = () => {
-    setIsPressed(true);
-  };
-
-  const handleMouseUp = () => {
-    setIsPressed(false);
-  };
-
   const handleMouseLeave = () => {
     setCursorPos(null);
-    setIsPressed(false);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -224,8 +221,6 @@ const IndexPlaceholder: React.FC = () => {
     <div
       className="relative min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden"
       onMouseMove={handleMouseMove}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -241,9 +236,16 @@ const IndexPlaceholder: React.FC = () => {
       </div>
 
       {/* Content layer - pinned to top */}
-      <div className="absolute top-8 left-0 right-0 z-10 max-w-xl mx-auto text-center space-y-6 px-6">
+      <div
+        className="absolute left-0 right-0 z-10 max-w-xl mx-auto text-center space-y-6 px-6"
+        style={{
+          top: `${HEADER_TOP_OFFSET}px`,
+          fontFamily: "'Golos Text', sans-serif",
+          color: '#ed1b34'
+        }}
+      >
         <h1 className="text-4xl font-bold">Привет!</h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg">
           Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке!
         </p>
       </div>
@@ -289,8 +291,8 @@ const IndexPlaceholder: React.FC = () => {
         </div>
       ))}
 
-      {/* Визуализация радиуса курсора (только при нажатии) */}
-      {cursorPos && isPressed && (
+      {/* Визуализация радиуса курсора */}
+      {cursorPos && (
         <div
           className="absolute pointer-events-none z-30"
           style={{
@@ -298,9 +300,10 @@ const IndexPlaceholder: React.FC = () => {
             top: `${cursorPos.y - CURSOR_RADIUS}px`,
             width: `${CURSOR_RADIUS * 2}px`,
             height: `${CURSOR_RADIUS * 2}px`,
-            border: '2px solid rgba(255, 0, 0, 0.5)',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255, 0, 0, 0.1) 0%, transparent 70%)'
+            background: 'radial-gradient(circle, rgba(200, 200, 255, 0.05) 0%, rgba(150, 150, 255, 0.02) 50%, transparent 80%)',
+            filter: 'blur(8px)',
+            opacity: isPressed ? 0.8 : 0.3 // Ярче на тач при нажатии
           }}
         />
       )}
