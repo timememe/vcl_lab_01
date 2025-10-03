@@ -74,28 +74,155 @@ const createFormDataForOpenAI = async (file: File, prompt: string): Promise<Form
     return formData;
 };
 
+// Helper function for image editing using preset image
+const generateImageEdit = async (formData: Record<string, string | File>, prompt: string): Promise<string[]> => {
+    const imageFile = formData.productImage as File;
+
+    if (!imageFile) {
+        throw new Error("Image file is missing for image editing.");
+    }
+
+    try {
+        // Create proper FormData for the API
+        const formDataForAPI = await createFormDataForOpenAI(imageFile, prompt);
+
+        console.log(`Sending image edit request with file: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
+        console.log(`Prompt: ${prompt}`);
+
+        // Use fetch API to call OpenAI images.edit endpoint
+        const response = await fetch('https://api.openai.com/v1/images/edits', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: formDataForAPI
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('OpenAI API Error:', errorData);
+            throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        console.log('Image edit response received');
+
+        if (!data.data || data.data.length === 0) {
+            throw new Error("OpenAI API did not return any images.");
+        }
+
+        // Handle both URL and base64 responses
+        const images = await Promise.all(data.data.map(async (item: any) => {
+            if (item.b64_json) {
+                return `data:image/png;base64,${item.b64_json}`;
+            } else if (item.url) {
+                // Convert URL to base64 for consistency
+                try {
+                    const imageResponse = await fetch(item.url);
+                    const imageBlob = await imageResponse.blob();
+                    return new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(imageBlob);
+                    });
+                } catch (error) {
+                    console.error('Error converting URL to base64:', error);
+                    return item.url;
+                }
+            }
+            throw new Error('No image data found in response');
+        }));
+
+        return images;
+    } catch (error) {
+        console.error("Error editing image with OpenAI:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Unknown error occurred while editing image with OpenAI.");
+    }
+};
+
 // Function for text-to-image generation
 const generateTextToImage = async (formData: Record<string, string | File>): Promise<string[]> => {
-    // Use presetPrompt if available (from product preset), otherwise fall back to custom request or default
-    let prompt = formData.presetPrompt as string || formData.prompt as string || formData.customRequest as string || 'Generate a professional product image';
+    // Start with base prompt from preset or custom request
+    let basePrompt = formData.presetPrompt as string || formData.prompt as string || 'Generate a professional product image';
 
     // Replace placeholder variables in preset template if present
-    if (formData.presetPrompt && prompt.includes('{')) {
+    if (basePrompt.includes('{')) {
         // Replace {productName} with actual product name if available
         const productName = formData.productName as string || 'product';
-        prompt = prompt.replace(/{productName}/g, productName);
+        basePrompt = basePrompt.replace(/{productName}/g, productName);
 
         // Replace other common placeholders that might be in the template
         Object.keys(formData).forEach(key => {
             if (typeof formData[key] === 'string') {
                 const placeholder = `{${key}}`;
-                prompt = prompt.replace(new RegExp(placeholder, 'g'), formData[key] as string);
+                basePrompt = basePrompt.replace(new RegExp(placeholder, 'g'), formData[key] as string);
             }
         });
     }
 
+    // Add additional details from formData
+    const additionalDetails: string[] = [];
+
+    // Add camera angle if present
+    if (formData.cameraAngle && formData.cameraAngle !== 'option_camera_default') {
+        const cameraAngleMap: Record<string, string> = {
+            'option_camera_top': 'top-down view',
+            'option_camera_45': '45-degree angle',
+            'option_camera_side': 'side view',
+            'option_camera_close': 'close-up shot'
+        };
+        const angle = cameraAngleMap[formData.cameraAngle as string] || formData.cameraAngle as string;
+        additionalDetails.push(`Camera angle: ${angle}`);
+    }
+
+    // Add concept preset if present
+    if (formData.conceptPreset && formData.conceptPreset !== 'option_concept_modern') {
+        const conceptMap: Record<string, string> = {
+            'option_concept_lifestyle': 'dynamic lifestyle scene with natural environment',
+            'option_concept_minimalist': 'minimalist composition with negative space',
+            'option_concept_luxury': 'luxury premium setting with elegant backdrop'
+        };
+        const concept = conceptMap[formData.conceptPreset as string] || formData.conceptPreset as string;
+        additionalDetails.push(`Style: ${concept}`);
+    }
+
+    // Add custom request if present and different from base
+    if (formData.customRequest && formData.customRequest !== basePrompt) {
+        additionalDetails.push(formData.customRequest as string);
+    }
+
+    // Combine base prompt with additional details
+    const prompt = additionalDetails.length > 0
+        ? `${basePrompt}. ${additionalDetails.join('. ')}`
+        : basePrompt;
+
     console.log("Text-to-image prompt:", prompt);
-    
+
+    // Check if we have a preset image path to load
+    const presetImagePath = formData.presetImage as string;
+    if (presetImagePath) {
+        console.log("Loading preset image from path:", presetImagePath);
+        try {
+            // Load the image from the path
+            const imageResponse = await fetch(presetImagePath);
+            const imageBlob = await imageResponse.blob();
+            const imageFile = new File([imageBlob], 'product.jpg', { type: imageBlob.type });
+
+            // Use image editing instead of generation
+            console.log("Using image-to-image with preset image");
+            formData.productImage = imageFile;
+
+            // Generate using the image editing endpoint
+            return await generateImageEdit(formData, prompt);
+        } catch (error) {
+            console.error("Failed to load preset image, falling back to text-to-image:", error);
+            // Continue with text-to-image generation
+        }
+    }
+
     try {
         // Use OpenAI images/generations endpoint for text-to-image with gpt-image-1
         const response = await fetch('https://api.openai.com/v1/images/generations', {
