@@ -11,6 +11,8 @@ const CLONE_MIN_COUNT = 3; // минимальное количество кло
 const CLONE_MAX_COUNT = 7; // максимальное количество клонов
 const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 80% скорости сохраняется)
 const COLLISION_FORCE = 0.5; // сила отталкивания при столкновении
+const CURSOR_RADIUS = 100; // радиус отталкивания вокруг курсора
+const CURSOR_FORCE = 1.5; // сила отталкивания от курсора
 
 interface ClonePhysics {
   id: number;
@@ -25,6 +27,8 @@ interface ClonePhysics {
 const IndexPlaceholder: React.FC = () => {
   const [mainImageVisible, setMainImageVisible] = useState(false);
   const [clones, setClones] = useState<ClonePhysics[]>([]);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
   const animationFrameRef = useRef<number>();
 
   useEffect(() => {
@@ -103,6 +107,24 @@ const IndexPlaceholder: React.FC = () => {
           }
         });
 
+        // Проверка столкновений с курсором (только когда нажато)
+        if (cursorPos && isPressed) {
+          updated.forEach(clone => {
+            const dx = clone.x - cursorPos.x;
+            const dy = clone.y - cursorPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < CURSOR_RADIUS + clone.size / 2) {
+              // Отталкивание от курсора
+              const angle = Math.atan2(dy, dx);
+              const force = CURSOR_FORCE * (1 - distance / (CURSOR_RADIUS + clone.size / 2));
+
+              clone.vx += Math.cos(angle) * force;
+              clone.vy += Math.sin(angle) * force;
+            }
+          });
+        }
+
         // Проверка столкновений между клонами
         for (let i = 0; i < updated.length; i++) {
           for (let j = i + 1; j < updated.length; j++) {
@@ -160,10 +182,55 @@ const IndexPlaceholder: React.FC = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [clones.length]);
+  }, [clones.length, cursorPos, isPressed]);
+
+  // Обработчики событий мыши и тач
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setCursorPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseDown = () => {
+    setIsPressed(true);
+  };
+
+  const handleMouseUp = () => {
+    setIsPressed(false);
+  };
+
+  const handleMouseLeave = () => {
+    setCursorPos(null);
+    setIsPressed(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      setCursorPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setIsPressed(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      setCursorPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsPressed(false);
+    setCursorPos(null);
+  };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden">
+    <div
+      className="relative min-h-screen flex flex-col items-center justify-center bg-white overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Background layer - 1.png (масштабируемый по размерам экрана) */}
       <div className="absolute inset-0 flex items-center justify-center">
         <img
@@ -221,6 +288,22 @@ const IndexPlaceholder: React.FC = () => {
           />
         </div>
       ))}
+
+      {/* Визуализация радиуса курсора (только при нажатии) */}
+      {cursorPos && isPressed && (
+        <div
+          className="absolute pointer-events-none z-30"
+          style={{
+            left: `${cursorPos.x - CURSOR_RADIUS}px`,
+            top: `${cursorPos.y - CURSOR_RADIUS}px`,
+            width: `${CURSOR_RADIUS * 2}px`,
+            height: `${CURSOR_RADIUS * 2}px`,
+            border: '2px solid rgba(255, 0, 0, 0.5)',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255, 0, 0, 0.1) 0%, transparent 70%)'
+          }}
+        />
+      )}
     </div>
   );
 };
