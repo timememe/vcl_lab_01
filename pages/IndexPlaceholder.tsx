@@ -9,11 +9,12 @@ const CLONE_MAX_SIZE = 250; // максимальный размер клоно�
 const CLONE_INITIAL_SPEED = 2; // начальная скорость движения клонов (пикселей за кадр)
 const CLONE_MIN_COUNT = 3; // минимальное количество клонов
 const CLONE_MAX_COUNT = 7; // максимальное количество клонов
-const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 80% скорости сохраняется)
+const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 80% скорости сохराняется)
 const COLLISION_FORCE = 0.5; // сила отталкивания при столкновении
 const CURSOR_RADIUS = 100; // радиус отталкивания вокруг курсора
 const CURSOR_FORCE = 1.5; // сила отталкивания от курсора
-const HEADER_TOP_OFFSET = 128; // отступ сверху для заголовка и подзаголовка (в пикселях)
+const HEADER_TOP_PADDING = 32; // верхний отступ для текстового блока (в пикселях)
+const HEADER_MAX_HEIGHT = 200; // максимальная высота текстового блока (в пикселях)
 
 interface ClonePhysics {
   id: number;
@@ -235,19 +236,26 @@ const IndexPlaceholder: React.FC = () => {
         />
       </div>
 
-      {/* Content layer - pinned to top */}
+      {/* Content layer - текст с ограничением высоты */}
       <div
-        className="absolute left-0 right-0 z-10 max-w-xl mx-auto text-center space-y-6 px-6"
+        className="absolute left-0 right-0 z-10 flex items-start justify-center px-6"
         style={{
-          top: `${HEADER_TOP_OFFSET}px`,
-          fontFamily: "'Golos Text', sans-serif",
-          color: '#ed1b34'
+          top: `${HEADER_TOP_PADDING}px`,
+          maxHeight: `${HEADER_MAX_HEIGHT}px`
         }}
       >
-        <h1 className="text-4xl font-bold">Привет!</h1>
-        <p className="text-lg">
-          Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке!
-        </p>
+        <div
+          className="max-w-xl text-center space-y-4 overflow-hidden"
+          style={{
+            fontFamily: "'Golos Text', sans-serif",
+            color: '#ed1b34'
+          }}
+        >
+          <h1 className="text-4xl font-bold">Привет!</h1>
+          <p className="text-lg">
+            Это Филиз, наш продюсер. Она спешит вам сообщить, что сайт в разработке!
+          </p>
+        </div>
       </div>
 
       {/* Main fil.png - медленно выезжает снизу */}
