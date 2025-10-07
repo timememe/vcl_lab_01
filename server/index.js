@@ -19,7 +19,8 @@ const PORT = process.env.NODE_ENV === 'production'
   : (process.env.API_PORT || 4000);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ============================================================
 // Authentication endpoints
@@ -441,6 +442,101 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
     });
   } catch (error) {
     console.error('Get product error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+app.post('/api/sora/generate', authMiddleware, async (req, res) => {
+  const { prompt, imageBase64, imageName } = req.body || {};
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ message: 'Prompt is required.' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
+  }
+
+  let inputImagePayload;
+
+  if (imageBase64) {
+    let base64Data = imageBase64;
+    let mimeType = 'image/png';
+
+    const dataUrlMatch = typeof imageBase64 === 'string' ? imageBase64.match(/^data:([^;]+);base64,(.+)$/) : null;
+    if (dataUrlMatch) {
+      mimeType = dataUrlMatch[1];
+      base64Data = dataUrlMatch[2];
+    }
+
+    try {
+      Buffer.from(base64Data, 'base64');
+    } catch (error) {
+      return res.status(400).json({ message: 'Invalid base64 image payload.' });
+    }
+
+    inputImagePayload = `data:${mimeType};base64,${base64Data}`;
+  }
+
+  const payload = {
+    model: 'sora-2',
+    prompt
+  };
+
+  if (inputImagePayload) {
+    payload.input_image = inputImagePayload;
+    if (imageName && typeof imageName === 'string') {
+      payload.image_name = imageName;
+    }
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/videos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Sora generation failed:', errorText);
+      return res.status(response.status).json({
+        message: 'Failed to generate video',
+        details: errorText
+      });
+    }
+
+    const data = await response.json();
+
+    let videoUrl = data?.data?.[0]?.url || data?.url || null;
+    let videoBase64 = data?.data?.[0]?.b64_json || null;
+
+    if (!videoUrl && videoBase64) {
+      videoUrl = `data:video/mp4;base64,${videoBase64}`;
+    }
+
+    if (!videoUrl) {
+      console.warn('Sora response did not include a video URL.');
+    }
+
+    const metadata = {
+      id: data?.id ?? null,
+      status: data?.status ?? data?.data?.[0]?.status ?? null,
+      created: data?.created ?? data?.created_at ?? null
+    };
+
+    res.json({
+      videoUrl,
+      videoBase64,
+      metadata
+    });
+  } catch (error) {
+    console.error('Sora generation error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

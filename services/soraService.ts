@@ -1,0 +1,59 @@
+﻿import { apiFetch } from './apiClient';
+
+export interface SoraGenerationParams {
+  prompt: string;
+  imageFile?: File | null;
+}
+
+export interface SoraGenerationResponse {
+  videoUrl?: string | null;
+  videoBase64?: string | null;
+  metadata?: {
+    id?: string | null;
+    status?: string | null;
+    created?: number | string | null;
+  } | null;
+}
+
+const fileToDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
+
+export const generateSoraVideo = async (
+  params: SoraGenerationParams
+): Promise<SoraGenerationResponse> => {
+  const { prompt, imageFile } = params;
+
+  if (!prompt.trim()) {
+    throw new Error('Prompt is required');
+  }
+
+  let imageBase64: string | undefined;
+  let imageName: string | undefined;
+
+  if (imageFile) {
+    imageBase64 = await fileToDataURL(imageFile);
+    imageName = imageFile.name;
+  }
+
+  const payload: Record<string, unknown> = {
+    prompt: prompt.trim()
+  };
+
+  if (imageBase64) {
+    payload.imageBase64 = imageBase64;
+    payload.imageName = imageName;
+  }
+
+  const response = await apiFetch('/api/sora/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+
+  return response as SoraGenerationResponse;
+};

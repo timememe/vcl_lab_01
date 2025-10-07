@@ -12,6 +12,7 @@ import { useLocalization } from '../contexts/LocalizationContext';
 import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../components/LoginScreen';
 import AdminDashboard from '../components/admin/AdminDashboard';
+import SoraVideoGenerator from '../components/SoraVideoGenerator';
 import { fetchUsage } from '../services/usageService';
 
 const VclLabApp: React.FC = () => {
@@ -21,7 +22,7 @@ const VclLabApp: React.FC = () => {
   const [lastGenerationData, setLastGenerationData] = useState<Record<string, string | File> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
-  const [activeView, setActiveView] = useState<'generator' | 'admin'>('generator');
+  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'sora'>('generator');
   const [usageSnapshot, setUsageSnapshot] = useState<UsageRecord | null>(null);
   const { t, setLocale, locale } = useLocalization();
   const translate = useCallback((key: string, fallback: string) => {
@@ -116,6 +117,14 @@ const VclLabApp: React.FC = () => {
         <AdminDashboard
           onClose={() => setActiveView('generator')}
           onUsageUpdated={(usage) => setUsageSnapshot(usage)}
+        />
+      );
+    }
+
+    if (activeView === 'sora') {
+      return (
+        <SoraVideoGenerator
+          onBack={() => setActiveView('generator')}
         />
       );
     }
@@ -237,6 +246,12 @@ const VclLabApp: React.FC = () => {
               </button>
             </div>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setActiveView(activeView === 'sora' ? 'generator' : 'sora')}
+                className={`px-3 py-1 text-xs rounded-md ${activeView === 'sora' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+              >
+                {translate('sora_open_button', 'Sora video')}
+              </button>
               {isAdmin && activeView !== 'admin' && (
                 <button
                   onClick={() => setActiveView('admin')}
