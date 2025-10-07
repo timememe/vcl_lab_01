@@ -13,6 +13,7 @@ export interface SoraGenerationResponse {
     status?: string | null;
     created?: number | string | null;
   } | null;
+  raw?: unknown;
 }
 
 const fileToDataURL = (file: File): Promise<string> => {
@@ -53,7 +54,11 @@ export const generateSoraVideo = async (
   const response = await apiFetch('/api/sora/generate', {
     method: 'POST',
     body: JSON.stringify(payload)
-  });
+  }) as SoraGenerationResponse;
 
-  return response as SoraGenerationResponse;
+  if (!response.videoUrl && response.videoBase64) {
+    response.videoUrl = `data:video/mp4;base64,${response.videoBase64}`;
+  }
+
+  return response;
 };

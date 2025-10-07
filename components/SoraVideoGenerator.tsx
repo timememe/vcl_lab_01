@@ -23,12 +23,14 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<SoraGenerationResponse['metadata']>(null);
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setImageFile(file);
     setVideoUrl(null);
     setMetadata(null);
+    setRawResponse(null);
 
     if (!file) {
       setImagePreview(null);
@@ -55,11 +57,13 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setError(null);
     setVideoUrl(null);
     setMetadata(null);
+    setRawResponse(null);
 
     try {
       const response = await generateSoraVideo({ prompt, imageFile });
       setVideoUrl(response.videoUrl ?? null);
       setMetadata(response.metadata ?? null);
+      setRawResponse(response.raw ?? null);
       if (!response.videoUrl && !response.videoBase64) {
         setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
       }
@@ -77,6 +81,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setImagePreview(null);
     setVideoUrl(null);
     setMetadata(null);
+    setRawResponse(null);
     setError(null);
   };
 
@@ -187,6 +192,15 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
             <span className="font-semibold">{translate('sora_metadata_created', 'Created')}:</span> {metadata?.created ?? 'N/A'}
           </p>
         </div>
+      )}
+
+      {rawResponse && (
+        <details className="mt-4 text-xs text-gray-500">
+          <summary className="cursor-pointer">{translate('sora_raw_summary', 'Show raw API response')}</summary>
+          <pre className="mt-2 max-h-64 overflow-auto bg-gray-50 border border-gray-200 rounded-lg p-3">
+            {JSON.stringify(rawResponse, null, 2)}
+          </pre>
+        </details>
       )}
     </div>
   );

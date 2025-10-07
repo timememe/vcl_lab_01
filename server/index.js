@@ -450,7 +450,7 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
 app.post('/api/sora/generate', authMiddleware, async (req, res) => {
   const { prompt, imageBase64, imageName } = req.body || {};
 
-  if (!prompt || typeof prompt !== 'string') {
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return res.status(400).json({ message: 'Prompt is required.' });
   }
 
@@ -459,13 +459,16 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
     return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
   }
 
-  let inputImagePayload;
+  let imageContent;
+  let mimeType = 'image/png';
 
   if (imageBase64) {
     let base64Data = imageBase64;
-    let mimeType = 'image/png';
 
-    const dataUrlMatch = typeof imageBase64 === 'string' ? imageBase64.match(/^data:([^;]+);base64,(.+)$/) : null;
+    const dataUrlMatch = typeof imageBase64 === 'string'
+      ? imageBase64.match(/^data:([^;]+);base64,(.+)$/)
+      : null;
+
     if (dataUrlMatch) {
       mimeType = dataUrlMatch[1];
       base64Data = dataUrlMatch[2];
@@ -477,20 +480,42 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Invalid base64 image payload.' });
     }
 
-    inputImagePayload = `data:${mimeType};base64,${base64Data}`;
+    imageContent = {
+      type: 'input_image',
+      image_base64: base64Data
+    };
+
+    if (mimeType) {
+      imageContent.mime_type = mimeType;
+    }
+
+    if (imageName && typeof imageName === 'string') {
+      imageContent.filename = imageName;
+    }
   }
+
+  const content = [
+    {
+      type: 'input_text',
+      text: prompt.trim()
+    }
+  ];
+
+  if (imageContent) {
+    content.push(imageContent);
+  }
+
+  console.log('Sora request meta:', { promptLength: prompt.trim().length, hasImage: Boolean(imageContent) });
 
   const payload = {
     model: 'sora-2',
-    prompt
+    input: [
+      {
+        role: 'user',
+        content
+      }
+    ]
   };
-
-  if (inputImagePayload) {
-    payload.input_image = inputImagePayload;
-    if (imageName && typeof imageName === 'string') {
-      payload.image_name = imageName;
-    }
-  }
 
   try {
     const response = await fetch('https://api.openai.com/v1/videos', {
@@ -505,24 +530,24 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Sora generation failed:', errorText);
+
+      let errorMessage = 'Failed to generate video';
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.error?.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch (_parseError) {
+        // ignore
+      }
+
       return res.status(response.status).json({
-        message: 'Failed to generate video',
+        message: errorMessage,
         details: errorText
       });
     }
 
     const data = await response.json();
-
-    let videoUrl = data?.data?.[0]?.url || data?.url || null;
-    let videoBase64 = data?.data?.[0]?.b64_json || null;
-
-    if (!videoUrl && videoBase64) {
-      videoUrl = `data:video/mp4;base64,${videoBase64}`;
-    }
-
-    if (!videoUrl) {
-      console.warn('Sora response did not include a video URL.');
-    }
 
     const metadata = {
       id: data?.id ?? null,
@@ -530,10 +555,40 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
       created: data?.created ?? data?.created_at ?? null
     };
 
+    let videoUrl = null;
+    let videoBase64 = null;
+
+    const candidates = Array.isArray(data?.data) ? data.data : [];
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object') {
+        if (!videoUrl) {
+          videoUrl = candidate.url
+            || candidate?.data?.url
+            || candidate?.asset_url
+            || null;
+        }
+
+        if (!videoBase64) {
+          videoBase64 = candidate?.b64_json
+            || candidate?.data?.b64_json
+            || null;
+        }
+      }
+    }
+
+    if (!videoUrl && data?.video?.url) {
+      videoUrl = data.video.url;
+    }
+
+    if (!videoUrl && videoBase64) {
+      videoUrl = `data:video/mp4;base64,${videoBase64}`;
+    }
+
     res.json({
       videoUrl,
       videoBase64,
-      metadata
+      metadata,
+      raw: data
     });
   } catch (error) {
     console.error('Sora generation error:', error);
