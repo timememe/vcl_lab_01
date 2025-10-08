@@ -25,6 +25,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [metadata, setMetadata] = useState<SoraGenerationResponse['metadata']>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [size, setSize] = useState('720x1280');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -32,7 +33,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
-    setSize('720x1280');
+    setStatusMessage(null);
 
     if (!file) {
       setImagePreview(null);
@@ -57,6 +58,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
 
     setIsSubmitting(true);
     setError(null);
+    setStatusMessage(null);
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
@@ -66,8 +68,14 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
       setVideoUrl(response.videoUrl ?? null);
       setMetadata(response.metadata ?? null);
       setRawResponse(response.raw ?? null);
+      setStatusMessage(response.statusMessage ?? null);
+
       if (!response.videoUrl && !response.videoBase64) {
-        setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
+        if (response.statusMessage) {
+          setStatusMessage(response.statusMessage);
+        } else {
+          setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -85,6 +93,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setMetadata(null);
     setRawResponse(null);
     setSize('720x1280');
+    setStatusMessage(null);
     setError(null);
   };
 
@@ -159,6 +168,12 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
             {error}
+          </div>
+        )}
+
+        {statusMessage && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm px-4 py-3 rounded-lg">
+            {statusMessage}
           </div>
         )}
 

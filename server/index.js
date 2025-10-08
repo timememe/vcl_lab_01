@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
+import sharp from 'sharp';
 import { Blob } from 'buffer';
 import {
   userQueries,
@@ -12,6 +13,27 @@ import {
   transaction
 } from './database/db.js';
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
+
+const DEFAULT_VIDEO_SIZE = '720x1280';
+
+const parseSize = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const match = value.trim().toLowerCase().match(/^(\d+)x(\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+};
 
 const app = express();
 // In production, use Render's PORT. In development, use API_PORT or 4000
@@ -449,7 +471,7 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
 
 
 app.post('/api/sora/generate', authMiddleware, async (req, res) => {
-  const { prompt, imageBase64, imageName, size } = req.body || {};
+  const { prompt, imageBase64, imageName, size, seconds } = req.body || {};
 
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return res.status(400).json({ message: 'Prompt is required.' });
@@ -459,6 +481,14 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
   if (!apiKey) {
     return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
   }
+
+  const sizeValue = typeof size === 'string' ? size.trim() : '';
+  const resolvedSize = sizeValue || DEFAULT_VIDEO_SIZE;
+  const parsedSize = parseSize(resolvedSize);
+  const secondsNumber = Number(seconds);
+  const resolvedSeconds = Number.isFinite(secondsNumber) && secondsNumber > 0
+    ? Math.min(Math.floor(secondsNumber), 60)
+    : 4;
 
   let referenceBlob = null;
   let mimeType = 'image/png';
@@ -478,24 +508,51 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
 
     try {
       const buffer = Buffer.from(base64Data, 'base64');
-      referenceBlob = new Blob([buffer], { type: mimeType });
+
+      if (parsedSize) {
+        const { width, height } = parsedSize;
+
+        try {
+          const resizedBuffer = await sharp(buffer)
+            .resize(width, height, { fit: 'cover' })
+            .toFormat('png')
+            .toBuffer();
+
+          referenceBlob = new Blob([resizedBuffer], { type: 'image/png' });
+          mimeType = 'image/png';
+          const baseName = referenceFilename ? referenceFilename.replace(/\.[^.]+$/, '') : `reference-${Date.now()}`;
+          referenceFilename = `${baseName}.png`;
+          console.log('Sora reference resized', { width, height, originalBytes: buffer.length, resizedBytes: resizedBuffer.length });
+        } catch (resizeError) {
+          console.error('Sora image resize failed, using original buffer:', resizeError);
+          referenceBlob = new Blob([buffer], { type: mimeType });
+        }
+      } else {
+        referenceBlob = new Blob([buffer], { type: mimeType });
+      }
+
       if (!referenceFilename) {
         const extension = mimeType.split('/')[1] || 'png';
         referenceFilename = `reference-${Date.now()}.${extension}`;
       }
     } catch (error) {
+      console.error('Invalid base64 image payload:', error);
       return res.status(400).json({ message: 'Invalid base64 image payload.' });
     }
   }
 
-  console.log('Sora request meta:', { promptLength: prompt.trim().length, hasImage: Boolean(referenceBlob) });
+  console.log('Sora request meta:', {
+    promptLength: prompt.trim().length,
+    hasImage: Boolean(referenceBlob),
+    size: resolvedSize,
+    seconds: resolvedSeconds
+  });
 
   const formData = new FormData();
   formData.append('model', 'sora-2');
   formData.append('prompt', prompt.trim());
-
-  const sizeValue = typeof size === 'string' ? size.trim() : '';
-  formData.append('size', sizeValue || '720x1280');
+  formData.append('size', resolvedSize);
+  formData.append('seconds', resolvedSeconds.toString());
 
   if (referenceBlob && referenceFilename) {
     formData.append('input_reference', referenceBlob, referenceFilename);
@@ -567,17 +624,34 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
       videoUrl = `data:video/mp4;base64,${videoBase64}`;
     }
 
+    let statusMessage = null;
+    if (!videoUrl) {
+      if (metadata.status) {
+        statusMessage = `Video status: ${metadata.status}. Request ID: ${metadata.id ?? 'unknown'}. Try again in a few seconds to fetch the finished video.`;
+      } else {
+        statusMessage = 'Video is still processing. Try again shortly.';
+      }
+    }
+
+    console.log('Sora response meta:', {
+      status: metadata.status,
+      id: metadata.id,
+      videoUrlPresent: Boolean(videoUrl)
+    });
+
     res.json({
       videoUrl,
       videoBase64,
       metadata,
-      raw: data
+      raw: data,
+      statusMessage
     });
   } catch (error) {
     console.error('Sora generation error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // ============================================================
 // Health check

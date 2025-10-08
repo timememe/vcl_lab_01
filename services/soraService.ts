@@ -15,7 +15,9 @@ export interface SoraGenerationResponse {
     created?: number | string | null;
   } | null;
   raw?: unknown;
+  statusMessage?: string | null;
 }
+
 
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
