@@ -90,6 +90,61 @@ const normalizeSoraResponse = (data) => {
   };
 };
 
+const SORA_API_BASE = 'https://api.openai.com/v1/videos';
+
+const normalizeSoraResponse = (data) => {
+  const metadata = {
+    id: data?.id ?? null,
+    status: data?.status ?? data?.data?.[0]?.status ?? null,
+    created: data?.created ?? data?.created_at ?? null
+  };
+
+  let videoUrl = null;
+  let videoBase64 = null;
+
+  const candidates = Array.isArray(data?.data) ? data.data : [];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object') {
+      if (!videoUrl) {
+        videoUrl = candidate.url
+          || candidate?.data?.url
+          || candidate?.asset_url
+          || null;
+      }
+
+      if (!videoBase64) {
+        videoBase64 = candidate?.b64_json
+          || candidate?.data?.b64_json
+          || null;
+      }
+    }
+  }
+
+  if (!videoUrl && data?.video?.url) {
+    videoUrl = data.video.url;
+  }
+
+  if (!videoUrl && videoBase64) {
+    videoUrl = `data:video/mp4;base64,${videoBase64}`;
+  }
+
+  let statusMessage = null;
+  if (!videoUrl) {
+    if (metadata.status) {
+      statusMessage = `Video status: ${metadata.status}. Request ID: ${metadata.id ?? 'unknown'}. Try again in a few seconds to fetch the finished video.`;
+    } else {
+      statusMessage = 'Video is still processing. Try again shortly.';
+    }
+  }
+
+  return {
+    videoUrl,
+    videoBase64,
+    metadata,
+    statusMessage
+  };
+};
+
 const app = express();
 // In production, use Render's PORT. In development, use API_PORT or 4000
 const PORT = process.env.NODE_ENV === 'production'

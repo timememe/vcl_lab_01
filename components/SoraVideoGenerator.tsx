@@ -6,9 +6,20 @@ interface SoraVideoGeneratorProps {
   onBack: () => void;
 }
 
+interface SoraHistoryEntry {
+  id: string;
+  prompt: string;
+  size: string;
+  createdAt: string;
+  status: string | null;
+  videoUrl: string | null;
+  statusMessage: string | null;
+}
+
 const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 12;
 const DEFAULT_SIZE = '720x1280';
+const MAX_HISTORY_ITEMS = 12;
 
 const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const { t } = useLocalization();
@@ -31,6 +42,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [size, setSize] = useState(DEFAULT_SIZE);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [history, setHistory] = useState<SoraHistoryEntry[]>([]);
 
   const pollTimeoutRef = useRef<number | null>(null);
   const pollAttemptsRef = useRef(0);
@@ -44,50 +56,79 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
 
   useEffect(() => () => clearPoll(), [clearPoll]);
 
-  const scheduleStatusPoll = useCallback((id: string) => {
-    clearPoll();
-    pollAttemptsRef.current = 0;
-
-    const poll = async () => {
-      try {
-        pollAttemptsRef.current += 1;
-        const response = await checkSoraVideoStatus(id);
-
-        setMetadata(response.metadata ?? null);
-        setRawResponse(response.raw ?? null);
-        setStatusMessage(response.statusMessage ?? null);
-
-        if (response.videoUrl) {
-          setVideoUrl(response.videoUrl);
-          setRequestId(null);
-          clearPoll();
-          return;
-        }
-
-        if (response.videoBase64) {
-          const url = `data:video/mp4;base64,${response.videoBase64}`;
-          setVideoUrl(url);
-          setRequestId(null);
-          clearPoll();
-          return;
-        }
-
-        if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
-          setStatusMessage(translate('sora_poll_timeout', 'Video is still processing. Try again shortly.'));
-          clearPoll();
-          return;
-        }
-
-        pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
-      } catch (pollError) {
-        clearPoll();
-        setRequestId(null);
-        setError(pollError instanceof Error ? pollError.message : translate('sora_status_error', 'Failed to check video status.'));
+  const upsertHistoryEntry = useCallback((entry: SoraHistoryEntry) => {
+    setHistory(prev => {
+      const existingIndex = prev.findIndex(item => item.id === entry.id);
+      if (existingIndex !== -1) {
+        const copy = [...prev];
+        copy[existingIndex] = { ...copy[existingIndex], ...entry };
+        return copy;
       }
-    };
+      return [entry, ...prev].slice(0, MAX_HISTORY_ITEMS);
+    });
+  }, []);
 
-    pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
-  }, [clearPoll, translate]);
+  const updateHistoryEntry = useCallback(
+    (id: string, updates: Partial<SoraHistoryEntry>) => {
+      setHistory(prev => prev.map(item => (item.id === id ? { ...item, ...updates } : item)));
+    },
+    []
+  );
+
+  const scheduleStatusPoll = useCallback(
+    (id: string) => {
+      clearPoll();
+      pollAttemptsRef.current = 0;
+
+      const poll = async () => {
+        try {
+          pollAttemptsRef.current += 1;
+          const response = await checkSoraVideoStatus(id);
+
+          setMetadata(response.metadata ?? null);
+          setRawResponse(response.raw ?? null);
+          setStatusMessage(response.statusMessage ?? null);
+
+          let resolvedVideoUrl = response.videoUrl ?? null;
+          if (!resolvedVideoUrl && response.videoBase64) {
+            resolvedVideoUrl = `data:video/mp4;base64,${response.videoBase64}`;
+          }
+
+          updateHistoryEntry(id, {
+            status: response.metadata?.status ?? null,
+            videoUrl: resolvedVideoUrl,
+            statusMessage: response.statusMessage ?? null
+          });
+
+          if (resolvedVideoUrl) {
+            setVideoUrl(resolvedVideoUrl);
+            setRequestId(null);
+            clearPoll();
+            return;
+          }
+
+          if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
+            const timeoutMessage = translate('sora_poll_timeout', 'Video is still processing. Try again shortly.');
+            setStatusMessage(timeoutMessage);
+            updateHistoryEntry(id, { statusMessage: timeoutMessage });
+            clearPoll();
+            return;
+          }
+
+          pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
+        } catch (pollError) {
+          clearPoll();
+          setRequestId(null);
+          const message = pollError instanceof Error ? pollError.message : translate('sora_status_error', 'Failed to check video status.');
+          setError(message);
+          updateHistoryEntry(id, { statusMessage: message });
+        }
+      };
+
+      pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
+    },
+    [clearPoll, translate, updateHistoryEntry]
+  );
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -131,12 +172,30 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
 
     try {
       const response = await generateSoraVideo({ prompt, imageFile, size });
-      setVideoUrl(response.videoUrl ?? null);
+
+      let resolvedVideoUrl = response.videoUrl ?? null;
+      if (!resolvedVideoUrl && response.videoBase64) {
+        resolvedVideoUrl = `data:video/mp4;base64,${response.videoBase64}`;
+      }
+
+      const entryId = response.requestId ?? response.metadata?.id ?? `req-${Date.now()}`;
+      const historyEntry: SoraHistoryEntry = {
+        id: entryId,
+        prompt,
+        size,
+        createdAt: new Date().toISOString(),
+        status: response.metadata?.status ?? null,
+        videoUrl: resolvedVideoUrl,
+        statusMessage: response.statusMessage ?? null
+      };
+      upsertHistoryEntry(historyEntry);
+
+      setVideoUrl(resolvedVideoUrl);
       setMetadata(response.metadata ?? null);
       setRawResponse(response.raw ?? null);
       setStatusMessage(response.statusMessage ?? null);
 
-      if (response.requestId && !response.videoUrl && !response.videoBase64) {
+      if (response.requestId && !resolvedVideoUrl) {
         setRequestId(response.requestId);
         scheduleStatusPoll(response.requestId);
       } else {
@@ -144,8 +203,10 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
         clearPoll();
       }
 
-      if (!response.videoUrl && !response.videoBase64 && !response.statusMessage) {
-        setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
+      if (!resolvedVideoUrl && !response.statusMessage) {
+        const message = translate('sora_no_video_returned', 'The API response did not include a video output.');
+        setError(message);
+        updateHistoryEntry(entryId, { statusMessage: message });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -154,6 +215,15 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
       setIsSubmitting(false);
     }
   };
+
+  const handleHistoryStatusCheck = useCallback(
+    (id: string) => {
+      setStatusMessage(null);
+      setRequestId(id);
+      scheduleStatusPoll(id);
+    },
+    [scheduleStatusPoll]
+  );
 
   const resetForm = () => {
     clearPoll();
@@ -167,6 +237,97 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setSize(DEFAULT_SIZE);
     setStatusMessage(null);
     setError(null);
+  };
+
+  const renderHistory = () => {
+    if (history.length === 0) {
+      return (
+        <p className="text-sm text-gray-500">
+          {translate('sora_history_empty', 'No video requests yet.')}
+        </p>
+      );
+    }
+
+    const formatPrompt = (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed.length <= 80) {
+        return trimmed;
+      }
+      return `${trimmed.slice(0, 77)}…`;
+    };
+
+    const formatTimestamp = (iso: string) => {
+      try {
+        return new Date(iso).toLocaleTimeString();
+      } catch {
+        return iso;
+      }
+    };
+
+    return (
+      <ul className="space-y-3">
+        {history.map(entry => (
+          <li
+            key={entry.id}
+            className="border border-gray-200 rounded-lg p-3 bg-gray-50 flex flex-col gap-2"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-gray-500">
+                {translate('sora_history_created', 'Created')}: {formatTimestamp(entry.createdAt)}
+              </div>
+              <div className="text-xs text-gray-500">
+                ID: <span className="font-mono">{entry.id}</span>
+              </div>
+            </div>
+            <div className="text-sm text-gray-700">
+              {formatPrompt(entry.prompt)}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+              <span>
+                {translate('sora_history_size', 'Size')}: {entry.size}
+              </span>
+              <span>
+                {translate('sora_history_status', 'Status')}: {entry.status ?? translate('sora_status_unknown', 'Unknown')}
+              </span>
+            </div>
+            {entry.statusMessage && (
+              <div className="text-xs text-yellow-800 bg-yellow-100 border border-yellow-200 rounded px-2 py-1">
+                {entry.statusMessage}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {entry.videoUrl ? (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={entry.videoUrl}
+                    download={`sora-${entry.id}.mp4`}
+                    className="text-xs text-red-600 hover:text-red-700 underline"
+                  >
+                    {translate('sora_history_download', 'Download video')}
+                  </a>
+                  <a
+                    href={entry.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-gray-600 hover:text-gray-800 underline"
+                  >
+                    {translate('sora_history_open', 'Open video')}
+                  </a>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleHistoryStatusCheck(entry.id)}
+                  className="text-xs text-gray-600 hover:text-gray-800 underline"
+                >
+                  {translate('sora_history_check', 'Check status')}
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   return (
@@ -305,6 +466,13 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
           </pre>
         </details>
       )}
+
+      <section className="border-t border-gray-200 pt-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+          {translate('sora_history_title', 'Recent requests')}
+        </h3>
+        {renderHistory()}
+      </section>
     </div>
   );
 };
