@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
+import { Blob } from 'buffer';
 import {
   userQueries,
   brandQueries,
@@ -448,7 +449,7 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
 
 
 app.post('/api/sora/generate', authMiddleware, async (req, res) => {
-  const { prompt, imageBase64, imageName } = req.body || {};
+  const { prompt, imageBase64, imageName, size } = req.body || {};
 
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return res.status(400).json({ message: 'Prompt is required.' });
@@ -459,8 +460,9 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
     return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
   }
 
-  let imageContent;
+  let referenceBlob = null;
   let mimeType = 'image/png';
+  let referenceFilename = (typeof imageName === 'string' && imageName.trim()) ? imageName.trim() : null;
 
   if (imageBase64) {
     let base64Data = imageBase64;
@@ -475,56 +477,37 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
     }
 
     try {
-      Buffer.from(base64Data, 'base64');
+      const buffer = Buffer.from(base64Data, 'base64');
+      referenceBlob = new Blob([buffer], { type: mimeType });
+      if (!referenceFilename) {
+        const extension = mimeType.split('/')[1] || 'png';
+        referenceFilename = `reference-${Date.now()}.${extension}`;
+      }
     } catch (error) {
       return res.status(400).json({ message: 'Invalid base64 image payload.' });
     }
-
-    imageContent = {
-      type: 'input_image',
-      image_base64: base64Data
-    };
-
-    if (mimeType) {
-      imageContent.mime_type = mimeType;
-    }
-
-    if (imageName && typeof imageName === 'string') {
-      imageContent.filename = imageName;
-    }
   }
 
-  const content = [
-    {
-      type: 'input_text',
-      text: prompt.trim()
-    }
-  ];
+  console.log('Sora request meta:', { promptLength: prompt.trim().length, hasImage: Boolean(referenceBlob) });
 
-  if (imageContent) {
-    content.push(imageContent);
+  const formData = new FormData();
+  formData.append('model', 'sora-2');
+  formData.append('prompt', prompt.trim());
+
+  const sizeValue = typeof size === 'string' ? size.trim() : '';
+  formData.append('size', sizeValue || '720x1280');
+
+  if (referenceBlob && referenceFilename) {
+    formData.append('input_reference', referenceBlob, referenceFilename);
   }
-
-  console.log('Sora request meta:', { promptLength: prompt.trim().length, hasImage: Boolean(imageContent) });
-
-  const payload = {
-    model: 'sora-2',
-    input: [
-      {
-        role: 'user',
-        content
-      }
-    ]
-  };
 
   try {
     const response = await fetch('https://api.openai.com/v1/videos', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`
       },
-      body: JSON.stringify(payload)
+      body: formData
     });
 
     if (!response.ok) {
@@ -538,7 +521,7 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
           errorMessage = parsed.error.message;
         }
       } catch (_parseError) {
-        // ignore
+        // ignore JSON parse issues
       }
 
       return res.status(response.status).json({

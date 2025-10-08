@@ -1,8 +1,9 @@
-﻿import { apiFetch } from './apiClient';
+import { apiFetch } from './apiClient';
 
 export interface SoraGenerationParams {
   prompt: string;
   imageFile?: File | null;
+  size?: string;
 }
 
 export interface SoraGenerationResponse {
@@ -28,7 +29,7 @@ const fileToDataURL = (file: File): Promise<string> => {
 export const generateSoraVideo = async (
   params: SoraGenerationParams
 ): Promise<SoraGenerationResponse> => {
-  const { prompt, imageFile } = params;
+  const { prompt, imageFile, size } = params;
 
   if (!prompt.trim()) {
     throw new Error('Prompt is required');
@@ -45,6 +46,11 @@ export const generateSoraVideo = async (
   const payload: Record<string, unknown> = {
     prompt: prompt.trim()
   };
+
+  const sizeValue = typeof size === 'string' ? size.trim() : '';
+  if (sizeValue) {
+    payload.size = sizeValue;
+  }
 
   if (imageBase64) {
     payload.imageBase64 = imageBase64;

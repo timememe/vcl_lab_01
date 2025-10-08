@@ -24,6 +24,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<SoraGenerationResponse['metadata']>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [size, setSize] = useState('720x1280');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -31,6 +32,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
+    setSize('720x1280');
 
     if (!file) {
       setImagePreview(null);
@@ -60,7 +62,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setRawResponse(null);
 
     try {
-      const response = await generateSoraVideo({ prompt, imageFile });
+      const response = await generateSoraVideo({ prompt, imageFile, size });
       setVideoUrl(response.videoUrl ?? null);
       setMetadata(response.metadata ?? null);
       setRawResponse(response.raw ?? null);
@@ -82,6 +84,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
+    setSize('720x1280');
     setError(null);
   };
 
@@ -119,6 +122,19 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
             onChange={(event) => setPrompt(event.target.value)}
             placeholder={translate('sora_prompt_placeholder', 'Describe the video you want to create...')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            {translate('sora_size_label', 'Video size (for example 720x1280)')}
+          </label>
+          <input
+            type="text"
+            value={size}
+            onChange={(event) => setSize(event.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
+            placeholder="720x1280"
           />
         </div>
 
