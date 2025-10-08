@@ -1,10 +1,14 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { generateSoraVideo, type SoraGenerationResponse } from '../services/soraService';
+import { checkSoraVideoStatus, generateSoraVideo, type SoraGenerationResponse } from '../services/soraService';
 
 interface SoraVideoGeneratorProps {
   onBack: () => void;
 }
+
+const POLL_INTERVAL_MS = 5000;
+const MAX_POLL_ATTEMPTS = 12;
+const DEFAULT_SIZE = '720x1280';
 
 const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const { t } = useLocalization();
@@ -24,11 +28,71 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<SoraGenerationResponse['metadata']>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [size, setSize] = useState('720x1280');
+  const [size, setSize] = useState(DEFAULT_SIZE);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
+
+  const pollTimeoutRef = useRef<number | null>(null);
+  const pollAttemptsRef = useRef(0);
+
+  const clearPoll = useCallback(() => {
+    if (pollTimeoutRef.current !== null) {
+      window.clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearPoll(), [clearPoll]);
+
+  const scheduleStatusPoll = useCallback((id: string) => {
+    clearPoll();
+    pollAttemptsRef.current = 0;
+
+    const poll = async () => {
+      try {
+        pollAttemptsRef.current += 1;
+        const response = await checkSoraVideoStatus(id);
+
+        setMetadata(response.metadata ?? null);
+        setRawResponse(response.raw ?? null);
+        setStatusMessage(response.statusMessage ?? null);
+
+        if (response.videoUrl) {
+          setVideoUrl(response.videoUrl);
+          setRequestId(null);
+          clearPoll();
+          return;
+        }
+
+        if (response.videoBase64) {
+          const url = `data:video/mp4;base64,${response.videoBase64}`;
+          setVideoUrl(url);
+          setRequestId(null);
+          clearPoll();
+          return;
+        }
+
+        if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
+          setStatusMessage(translate('sora_poll_timeout', 'Video is still processing. Try again shortly.'));
+          clearPoll();
+          return;
+        }
+
+        pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
+      } catch (pollError) {
+        clearPoll();
+        setRequestId(null);
+        setError(pollError instanceof Error ? pollError.message : translate('sora_status_error', 'Failed to check video status.'));
+      }
+    };
+
+    pollTimeoutRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
+  }, [clearPoll, translate]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
+    clearPoll();
+    setRequestId(null);
     setImageFile(file);
     setVideoUrl(null);
     setMetadata(null);
@@ -56,6 +120,8 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
       return;
     }
 
+    clearPoll();
+    setRequestId(null);
     setIsSubmitting(true);
     setError(null);
     setStatusMessage(null);
@@ -70,12 +136,16 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
       setRawResponse(response.raw ?? null);
       setStatusMessage(response.statusMessage ?? null);
 
-      if (!response.videoUrl && !response.videoBase64) {
-        if (response.statusMessage) {
-          setStatusMessage(response.statusMessage);
-        } else {
-          setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
-        }
+      if (response.requestId && !response.videoUrl && !response.videoBase64) {
+        setRequestId(response.requestId);
+        scheduleStatusPoll(response.requestId);
+      } else {
+        setRequestId(null);
+        clearPoll();
+      }
+
+      if (!response.videoUrl && !response.videoBase64 && !response.statusMessage) {
+        setError(translate('sora_no_video_returned', 'The API response did not include a video output.'));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -86,13 +156,15 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   };
 
   const resetForm = () => {
+    clearPoll();
+    setRequestId(null);
     setPrompt('');
     setImageFile(null);
     setImagePreview(null);
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
-    setSize('720x1280');
+    setSize(DEFAULT_SIZE);
     setStatusMessage(null);
     setError(null);
   };
@@ -143,7 +215,7 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
             value={size}
             onChange={(event) => setSize(event.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
-            placeholder="720x1280"
+            placeholder={DEFAULT_SIZE}
           />
         </div>
 
