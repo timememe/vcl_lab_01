@@ -195,7 +195,6 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
         resolvedVideoUrl = `data:video/mp4;base64,${response.videoBase64}`;
       }
 
-      const actualSize = sizePreset === 'custom' ? customSize : sizePreset;
       const entryId = response.requestId ?? response.metadata?.id ?? `req-${Date.now()}`;
       const historyEntry: SoraHistoryEntry = {
         id: entryId,
