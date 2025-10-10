@@ -24,7 +24,9 @@
       "Bash(findstr:*)",
       "Bash(git log:*)",
       "Bash(cat:*)",
-      "Bash(del serverdatabaseapp.db)"
+      "Bash(del serverdatabaseapp.db)",
+      "Bash(tree:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

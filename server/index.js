@@ -525,7 +525,7 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
 });
 
 
-app.post('/api/sora/generate', authMiddleware, async (req, res) => {
+app.post('/api/sora/generate', authMiddleware, adminMiddleware, async (req, res) => {
   const { prompt, imageBase64, imageName, size, seconds } = req.body || {};
 
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -664,7 +664,7 @@ app.post('/api/sora/generate', authMiddleware, async (req, res) => {
 
 
 
-app.get('/api/sora/status/:id', authMiddleware, async (req, res) => {
+app.get('/api/sora/status/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { id } = req.params;
   const videoId = id?.trim();
 

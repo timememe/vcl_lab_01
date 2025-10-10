@@ -122,6 +122,11 @@ const VclLabApp: React.FC = () => {
     }
 
     if (activeView === 'sora') {
+      // Only admins can access Sora
+      if (!isAdmin) {
+        setActiveView('generator');
+        return null;
+      }
       return (
         <SoraVideoGenerator
           onBack={() => setActiveView('generator')}
@@ -246,12 +251,14 @@ const VclLabApp: React.FC = () => {
               </button>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setActiveView(activeView === 'sora' ? 'generator' : 'sora')}
-                className={`px-3 py-1 text-xs rounded-md ${activeView === 'sora' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
-              >
-                {translate('sora_open_button', 'Sora video')}
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveView(activeView === 'sora' ? 'generator' : 'sora')}
+                  className={`px-3 py-1 text-xs rounded-md ${activeView === 'sora' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+                >
+                  {translate('sora_open_button', 'Sora video')}
+                </button>
+              )}
               {isAdmin && activeView !== 'admin' && (
                 <button
                   onClick={() => setActiveView('admin')}
