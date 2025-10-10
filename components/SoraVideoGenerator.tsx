@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { checkSoraVideoStatus, generateSoraVideo, type SoraGenerationResponse } from '../services/soraService';
+import { checkSoraVideoStatus, generateSoraVideo, downloadSoraVideo, type SoraGenerationResponse } from '../services/soraService';
 
 interface SoraVideoGeneratorProps {
   onBack: () => void;
@@ -225,6 +225,34 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     [scheduleStatusPoll]
   );
 
+  const handleDownloadVideo = useCallback(async (id: string, videoUrl?: string | null) => {
+    try {
+      if (videoUrl && videoUrl.startsWith('data:video')) {
+        // If we have base64 video, download directly from the data URL
+        const link = document.createElement('a');
+        link.href = videoUrl;
+        link.download = `sora-${id}.mp4`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Otherwise, download from the backend
+        const blob = await downloadSoraVideo(id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sora-${id}.mp4`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to download video';
+      setError(message);
+    }
+  }, []);
+
   const resetForm = () => {
     clearPoll();
     setRequestId(null);
@@ -295,30 +323,31 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
                 {entry.statusMessage}
               </div>
             )}
+            {entry.videoUrl && (
+              <div className="mt-2">
+                <video
+                  controls
+                  className="w-full max-h-48 rounded-lg border border-gray-300"
+                  src={entry.videoUrl}
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               {entry.videoUrl ? (
                 <div className="flex items-center gap-2">
-                  <a
-                    href={entry.videoUrl}
-                    download={`sora-${entry.id}.mp4`}
-                    className="text-xs text-red-600 hover:text-red-700 underline"
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadVideo(entry.id, entry.videoUrl)}
+                    className="px-3 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700"
                   >
                     {translate('sora_history_download', 'Download video')}
-                  </a>
-                  <a
-                    href={entry.videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-gray-600 hover:text-gray-800 underline"
-                  >
-                    {translate('sora_history_open', 'Open video')}
-                  </a>
+                  </button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleHistoryStatusCheck(entry.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 underline"
+                  className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                 >
                   {translate('sora_history_check', 'Check status')}
                 </button>
@@ -434,13 +463,13 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
         <div className="space-y-3">
           <h3 className="text-lg font-semibold text-gray-800">{translate('sora_result_title', 'Generated video')}</h3>
           <video controls className="w-full rounded-lg border" src={videoUrl} />
-          <a
-            href={videoUrl}
-            download="sora-video.mp4"
-            className="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700"
+          <button
+            type="button"
+            onClick={() => handleDownloadVideo(metadata?.id || requestId || 'video', videoUrl)}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
           >
             {translate('sora_download', 'Download video')}
-          </a>
+          </button>
         </div>
       )}
 

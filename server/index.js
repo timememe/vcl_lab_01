@@ -695,7 +695,33 @@ app.get('/api/sora/status/:id', authMiddleware, adminMiddleware, async (req, res
     }
 
     const data = await statusResponse.json();
-    const normalized = normalizeSoraResponse(data);
+    let normalized = normalizeSoraResponse(data);
+
+    // If video is completed, fetch the actual video content
+    if (data.status === 'completed' && !normalized.videoUrl) {
+      console.log('Video completed, fetching content for:', videoId);
+
+      try {
+        const contentResponse = await fetch(`${SORA_API_BASE}/${encodeURIComponent(videoId)}/content`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`
+          }
+        });
+
+        if (contentResponse.ok) {
+          const videoBuffer = await contentResponse.arrayBuffer();
+          const base64Video = Buffer.from(videoBuffer).toString('base64');
+          normalized.videoBase64 = base64Video;
+          normalized.videoUrl = `data:video/mp4;base64,${base64Video}`;
+          console.log('Video content downloaded successfully, size:', videoBuffer.byteLength, 'bytes');
+        } else {
+          console.warn('Failed to download video content:', contentResponse.status);
+        }
+      } catch (downloadError) {
+        console.error('Error downloading video content:', downloadError);
+      }
+    }
 
     console.log('Sora status check meta:', {
       id: normalized.metadata.id,
@@ -710,6 +736,55 @@ app.get('/api/sora/status/:id', authMiddleware, adminMiddleware, async (req, res
     });
   } catch (error) {
     console.error('Sora status check error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Download completed Sora video
+app.get('/api/sora/download/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const videoId = id?.trim();
+
+  if (!videoId) {
+    return res.status(400).json({ message: 'Video id is required.' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    console.log('Downloading video content for:', videoId);
+
+    const contentResponse = await fetch(`${SORA_API_BASE}/${encodeURIComponent(videoId)}/content`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`
+      }
+    });
+
+    if (!contentResponse.ok) {
+      const errorText = await contentResponse.text();
+      console.error('Video download failed:', videoId, errorText);
+      return res.status(contentResponse.status).json({
+        message: 'Failed to download video',
+        details: errorText
+      });
+    }
+
+    const videoBuffer = await contentResponse.arrayBuffer();
+
+    // Set headers for video download
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', `attachment; filename="sora-${videoId}.mp4"`);
+    res.setHeader('Content-Length', videoBuffer.byteLength);
+
+    console.log('Video downloaded successfully, size:', videoBuffer.byteLength, 'bytes');
+
+    res.send(Buffer.from(videoBuffer));
+  } catch (error) {
+    console.error('Video download error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

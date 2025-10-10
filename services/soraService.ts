@@ -83,3 +83,36 @@ export const checkSoraVideoStatus = async (
 
   return parsed;
 };
+
+export const downloadSoraVideo = async (requestId: string): Promise<Blob> => {
+  const token = localStorage.getItem('token');
+
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const response = await fetch(`/api/sora/download/${encodeURIComponent(requestId)}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = 'Failed to download video';
+
+    try {
+      const parsed = JSON.parse(errorText);
+      if (parsed?.message) {
+        errorMessage = parsed.message;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  return await response.blob();
+};
