@@ -87,6 +87,17 @@ const normalizeSoraResponse = (data) => {
     created: data?.created ?? data?.created_at ?? null
   };
 
+  // Extract error information if status is failed
+  let errorDetails = null;
+  if (metadata.status === 'failed') {
+    errorDetails = data?.error?.message || data?.failure_reason || 'Unknown error';
+    console.error('Sora video generation failed:', {
+      id: metadata.id,
+      error: errorDetails,
+      fullResponse: JSON.stringify(data, null, 2)
+    });
+  }
+
   let videoUrl = null;
   let videoBase64 = null;
 
@@ -117,7 +128,9 @@ const normalizeSoraResponse = (data) => {
   }
 
   let statusMessage = null;
-  if (!videoUrl) {
+  if (metadata.status === 'failed') {
+    statusMessage = `Video generation failed: ${errorDetails}`;
+  } else if (!videoUrl) {
     if (metadata.status) {
       statusMessage = `Video status: ${metadata.status}. Request ID: ${metadata.id ?? 'unknown'}. Try again in a few seconds to fetch the finished video.`;
     } else {
@@ -129,7 +142,8 @@ const normalizeSoraResponse = (data) => {
     videoUrl,
     videoBase64,
     metadata,
-    statusMessage
+    statusMessage,
+    error: errorDetails
   };
 };
 
