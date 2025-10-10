@@ -20,7 +20,7 @@ const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 12;
 const DEFAULT_SIZE = '720x1280';
 const MAX_HISTORY_ITEMS = 12;
-const DEFAULT_SECONDS = 5;
+const DEFAULT_SECONDS = 4;
 
 const SIZE_PRESETS = [
   { label: '9:16 (Portrait)', value: '720x1280', aspectRatio: '9:16' },
@@ -30,9 +30,9 @@ const SIZE_PRESETS = [
 ];
 
 const DURATION_OPTIONS = [
-  { label: '3 sec', value: 3 },
-  { label: '5 sec', value: 5 },
-  { label: '10 sec', value: 10 }
+  { label: '4 sec', value: 4 },
+  { label: '8 sec', value: 8 },
+  { label: '12 sec', value: 12 }
 ];
 
 const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
