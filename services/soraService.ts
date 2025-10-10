@@ -4,6 +4,7 @@ export interface SoraGenerationParams {
   prompt: string;
   imageFile?: File | null;
   size?: string;
+  seconds?: number;
 }
 
 export interface SoraGenerationResponse {
@@ -31,7 +32,7 @@ const fileToDataURL = (file: File): Promise<string> => {
 export const generateSoraVideo = async (
   params: SoraGenerationParams
 ): Promise<SoraGenerationResponse> => {
-  const { prompt, imageFile, size } = params;
+  const { prompt, imageFile, size, seconds } = params;
 
   if (!prompt.trim()) {
     throw new Error('Prompt is required');
@@ -52,6 +53,10 @@ export const generateSoraVideo = async (
   const sizeValue = typeof size === 'string' ? size.trim() : '';
   if (sizeValue) {
     payload.size = sizeValue;
+  }
+
+  if (typeof seconds === 'number' && seconds > 0) {
+    payload.seconds = seconds;
   }
 
   if (imageBase64) {

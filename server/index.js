@@ -35,6 +35,49 @@ const parseSize = (value) => {
   return { width, height };
 };
 
+const getAspectRatio = (width, height) => {
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+  const divisor = gcd(width, height);
+  return { width: width / divisor, height: height / divisor };
+};
+
+const resizeImageToAspectRatio = async (buffer, targetWidth, targetHeight) => {
+  try {
+    const metadata = await sharp(buffer).metadata();
+    const originalWidth = metadata.width || 0;
+    const originalHeight = metadata.height || 0;
+
+    if (originalWidth === 0 || originalHeight === 0) {
+      throw new Error('Invalid image dimensions');
+    }
+
+    // Calculate target aspect ratio
+    const targetAspect = targetWidth / targetHeight;
+    const originalAspect = originalWidth / originalHeight;
+
+    console.log('Image resize info:', {
+      original: `${originalWidth}x${originalHeight}`,
+      target: `${targetWidth}x${targetHeight}`,
+      originalAspect: originalAspect.toFixed(2),
+      targetAspect: targetAspect.toFixed(2)
+    });
+
+    // Resize with aspect ratio fit
+    const resized = await sharp(buffer)
+      .resize(targetWidth, targetHeight, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .toFormat('png')
+      .toBuffer();
+
+    return resized;
+  } catch (error) {
+    console.error('Image resize error:', error);
+    throw error;
+  }
+};
+
 const SORA_API_BASE = 'https://api.openai.com/v1/videos';
 
 const normalizeSoraResponse = (data) => {
@@ -568,16 +611,17 @@ app.post('/api/sora/generate', authMiddleware, adminMiddleware, async (req, res)
         const { width, height } = parsedSize;
 
         try {
-          const resizedBuffer = await sharp(buffer)
-            .resize(width, height, { fit: 'cover' })
-            .toFormat('png')
-            .toBuffer();
+          const resizedBuffer = await resizeImageToAspectRatio(buffer, width, height);
 
           referenceBlob = new Blob([resizedBuffer], { type: 'image/png' });
           mimeType = 'image/png';
           const baseName = referenceFilename ? referenceFilename.replace(/\.[^.]+$/, '') : `reference-${Date.now()}`;
           referenceFilename = `${baseName}.png`;
-          console.log('Sora reference resized', { width, height, originalBytes: buffer.length, resizedBytes: resizedBuffer.length });
+          console.log('Sora reference resized successfully', {
+            size: `${width}x${height}`,
+            originalBytes: buffer.length,
+            resizedBytes: resizedBuffer.length
+          });
         } catch (resizeError) {
           console.error('Sora image resize failed, using original buffer:', resizeError);
           referenceBlob = new Blob([buffer], { type: mimeType });

@@ -20,6 +20,20 @@ const POLL_INTERVAL_MS = 5000;
 const MAX_POLL_ATTEMPTS = 12;
 const DEFAULT_SIZE = '720x1280';
 const MAX_HISTORY_ITEMS = 12;
+const DEFAULT_SECONDS = 5;
+
+const SIZE_PRESETS = [
+  { label: '9:16 (Portrait)', value: '720x1280', aspectRatio: '9:16' },
+  { label: '16:9 (Landscape)', value: '1280x720', aspectRatio: '16:9' },
+  { label: '1:1 (Square)', value: '1024x1024', aspectRatio: '1:1' },
+  { label: 'Custom', value: 'custom', aspectRatio: 'custom' }
+];
+
+const DURATION_OPTIONS = [
+  { label: '3 sec', value: 3 },
+  { label: '5 sec', value: 5 },
+  { label: '10 sec', value: 10 }
+];
 
 const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const { t } = useLocalization();
@@ -39,7 +53,9 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<SoraGenerationResponse['metadata']>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [size, setSize] = useState(DEFAULT_SIZE);
+  const [sizePreset, setSizePreset] = useState('720x1280');
+  const [customSize, setCustomSize] = useState('');
+  const [seconds, setSeconds] = useState(DEFAULT_SECONDS);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [history, setHistory] = useState<SoraHistoryEntry[]>([]);
@@ -171,18 +187,20 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setRawResponse(null);
 
     try {
-      const response = await generateSoraVideo({ prompt, imageFile, size });
+      const actualSize = sizePreset === 'custom' ? customSize : sizePreset;
+      const response = await generateSoraVideo({ prompt, imageFile, size: actualSize, seconds });
 
       let resolvedVideoUrl = response.videoUrl ?? null;
       if (!resolvedVideoUrl && response.videoBase64) {
         resolvedVideoUrl = `data:video/mp4;base64,${response.videoBase64}`;
       }
 
+      const actualSize = sizePreset === 'custom' ? customSize : sizePreset;
       const entryId = response.requestId ?? response.metadata?.id ?? `req-${Date.now()}`;
       const historyEntry: SoraHistoryEntry = {
         id: entryId,
         prompt,
-        size,
+        size: actualSize,
         createdAt: new Date().toISOString(),
         status: response.metadata?.status ?? null,
         videoUrl: resolvedVideoUrl,
@@ -262,7 +280,9 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
     setVideoUrl(null);
     setMetadata(null);
     setRawResponse(null);
-    setSize(DEFAULT_SIZE);
+    setSizePreset('720x1280');
+    setCustomSize('');
+    setSeconds(DEFAULT_SECONDS);
     setStatusMessage(null);
     setError(null);
   };
@@ -310,13 +330,21 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
             <div className="text-sm text-gray-700">
               {formatPrompt(entry.prompt)}
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-              <span>
-                {translate('sora_history_size', 'Size')}: {entry.size}
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="text-gray-600">
+                {translate('sora_history_size', 'Size')}: <span className="font-medium">{entry.size}</span>
               </span>
-              <span>
-                {translate('sora_history_status', 'Status')}: {entry.status ?? translate('sora_status_unknown', 'Unknown')}
-              </span>
+              {entry.status && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  entry.status === 'completed'
+                    ? 'bg-green-100 text-green-700'
+                    : entry.status === 'failed'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {entry.status}
+                </span>
+              )}
             </div>
             {entry.statusMessage && (
               <div className="text-xs text-yellow-800 bg-yellow-100 border border-yellow-200 rounded px-2 py-1">
@@ -396,17 +424,49 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            {translate('sora_size_label', 'Video size (for example 720x1280)')}
-          </label>
-          <input
-            type="text"
-            value={size}
-            onChange={(event) => setSize(event.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
-            placeholder={DEFAULT_SIZE}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              {translate('sora_size_label', 'Video size')}
+            </label>
+            <select
+              value={sizePreset}
+              onChange={(event) => setSizePreset(event.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
+            >
+              {SIZE_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+            {sizePreset === 'custom' && (
+              <input
+                type="text"
+                value={customSize}
+                onChange={(event) => setCustomSize(event.target.value)}
+                placeholder="e.g., 720x1280"
+                className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              {translate('sora_duration_label', 'Video duration')}
+            </label>
+            <select
+              value={seconds}
+              onChange={(event) => setSeconds(Number(event.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 transition"
+            >
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
@@ -460,30 +520,36 @@ const SoraVideoGenerator: React.FC<SoraVideoGeneratorProps> = ({ onBack }) => {
       </form>
 
       {videoUrl && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-gray-800">{translate('sora_result_title', 'Generated video')}</h3>
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800">{translate('sora_result_title', 'Generated video')}</h3>
+            {metadata?.status && (
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                metadata.status === 'completed'
+                  ? 'bg-green-100 text-green-700'
+                  : metadata.status === 'failed'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {metadata.status}
+              </span>
+            )}
+          </div>
           <video controls className="w-full rounded-lg border" src={videoUrl} />
-          <button
-            type="button"
-            onClick={() => handleDownloadVideo(metadata?.id || requestId || 'video', videoUrl)}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
-          >
-            {translate('sora_download', 'Download video')}
-          </button>
-        </div>
-      )}
-
-      {metadata && (
-        <div className="mt-4 text-xs text-gray-500 space-y-1">
-          <p>
-            <span className="font-semibold">{translate('sora_metadata_id', 'Request ID')}:</span> {metadata?.id ?? 'N/A'}
-          </p>
-          <p>
-            <span className="font-semibold">{translate('sora_metadata_status', 'Status')}:</span> {metadata?.status ?? 'N/A'}
-          </p>
-          <p>
-            <span className="font-semibold">{translate('sora_metadata_created', 'Created')}:</span> {metadata?.created ?? 'N/A'}
-          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => handleDownloadVideo(metadata?.id || requestId || 'video', videoUrl)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+            >
+              {translate('sora_download', 'Download video')}
+            </button>
+            {metadata?.id && (
+              <span className="text-xs text-gray-500">
+                ID: <span className="font-mono">{metadata.id}</span>
+              </span>
+            )}
+          </div>
         </div>
       )}
 
