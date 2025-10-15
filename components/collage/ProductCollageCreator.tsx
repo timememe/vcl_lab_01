@@ -1,12 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, Download, Wand2, Settings, Image as ImageIcon, ToggleLeft, ToggleRight, Camera } from 'lucide-react';
 import { CollageElement, CollageState } from '../../types/collage';
-import { AIModel, Category } from '../../types';
+import { AIModel, Category, Product } from '../../types';
 import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services/productCollagePresets';
 import { collageAiService, CollageAiRequest } from '../../services/collageAiService';
 import { collageExportService } from '../../services/collageExport';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import PresetSelector from '../PresetSelector';
+import CollageCanvas from './CollageCanvas';
+import BackgroundManager from './BackgroundManager';
+import ElementLabels from './ElementLabels';
+import InteractiveUploadGrid from './InteractiveUploadGrid';
+import LoadingIndicator from '../LoadingIndicator';
 
 interface ProductCollageCreatorProps {
   category: Category;
