@@ -10,14 +10,36 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 
-const fileToGenerativePart = async (file: File) => {
-  const base64EncodedDataPromise = new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-    reader.readAsDataURL(file);
-  });
+const fileOrUrlToGenerativePart = async (fileOrUrl: File | string) => {
+  let mimeType: string;
+  let data: string;
+
+  if (typeof fileOrUrl === 'string') {
+    // Handle URL
+    const response = await fetch(fileOrUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image from URL: ${fileOrUrl}`);
+    }
+    const blob = await response.blob();
+    mimeType = blob.type;
+    data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } else {
+    // Handle File object
+    mimeType = fileOrUrl.type;
+    data = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.readAsDataURL(fileOrUrl);
+    });
+  }
+
   return {
-    inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+    inlineData: { data, mimeType },
   };
 };
 
@@ -27,17 +49,17 @@ export const generateProductImages = async (
   formData: Record<string, string | File>
 ): Promise<string[]> => {
   
-  const imageFile = formData.productImage as File;
-  if (!imageFile) {
+  const imageFileOrUrl = formData.productImage;
+  if (!imageFileOrUrl) {
     throw new Error("Image file is missing.");
   }
   
-  const backgroundRefFile = formData.backgroundReferenceImage as File;
-  const modelFile = formData.modelImage as File;
-  const clothingFile = formData.clothingImage as File;
-  const consistencyFile = formData.consistencyReferenceImage as File;
+  const backgroundRefFile = formData.backgroundReferenceImage;
+  const modelFile = formData.modelImage;
+  const clothingFile = formData.clothingImage;
+  const consistencyFile = formData.consistencyReferenceImage;
 
-  const imagePart = await fileToGenerativePart(imageFile);
+  const imagePart = await fileOrUrlToGenerativePart(imageFileOrUrl);
   
   // Pass all form data to the template, including files for conditional logic
   const prompt = category.promptTemplate(formData as Record<string, string>);
@@ -46,22 +68,22 @@ export const generateProductImages = async (
   const parts: Part[] = [imagePart];
   
   if (backgroundRefFile) {
-      const backgroundPart = await fileToGenerativePart(backgroundRefFile);
+      const backgroundPart = await fileOrUrlToGenerativePart(backgroundRefFile);
       parts.push(backgroundPart);
   }
   
   if (modelFile) {
-      const modelPart = await fileToGenerativePart(modelFile);
+      const modelPart = await fileOrUrlToGenerativePart(modelFile);
       parts.push(modelPart);
   }
 
   if (clothingFile) {
-      const clothingPart = await fileToGenerativePart(clothingFile);
+      const clothingPart = await fileOrUrlToGenerativePart(clothingFile);
       parts.push(clothingPart);
   }
   
   if (consistencyFile) {
-      const consistencyPart = await fileToGenerativePart(consistencyFile);
+      const consistencyPart = await fileOrUrlToGenerativePart(consistencyFile);
       parts.push(consistencyPart);
   }
 
