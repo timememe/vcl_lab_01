@@ -9,8 +9,66 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
+const resizeAndPadImage = async (fileOrUrl: File | string, targetAspectRatio: '16:9' | '9:16' | '1:1'): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous"; // Important for fetching from URLs
 
-const fileOrUrlToGenerativePart = async (fileOrUrl: File | string) => {
+        img.onload = () => {
+            const originalWidth = img.width;
+            const originalHeight = img.height;
+
+            const targetRatio = eval(targetAspectRatio.replace(':', '/'));
+
+            let newWidth = originalWidth;
+            let newHeight = originalHeight;
+
+            if (targetRatio > originalWidth / originalHeight) {
+                newWidth = originalHeight * targetRatio;
+            } else {
+                newHeight = originalWidth / targetRatio;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error('Failed to get canvas context'));
+            }
+
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, newWidth, newHeight);
+
+            const x = (newWidth - originalWidth) / 2;
+            const y = (newHeight - originalHeight) / 2;
+
+            ctx.drawImage(img, x, y, originalWidth, originalHeight);
+
+            canvas.toBlob(blob => {
+                if (blob) {
+                    resolve(blob);
+                } else {
+                    reject(new Error('Canvas to Blob conversion failed'));
+                }
+            }, 'image/jpeg', 0.95); // Use JPEG for smaller size
+        };
+
+        img.onerror = () => {
+            reject(new Error('Image loading failed'));
+        };
+
+        if (typeof fileOrUrl === 'string') {
+            img.src = fileOrUrl;
+        } else { // It's a File or Blob
+            img.src = URL.createObjectURL(fileOrUrl);
+        }
+    });
+};
+
+
+const fileOrUrlToGenerativePart = async (fileOrUrl: File | string | Blob) => {
   let mimeType: string;
   let data: string;
 
@@ -29,7 +87,7 @@ const fileOrUrlToGenerativePart = async (fileOrUrl: File | string) => {
       reader.readAsDataURL(blob);
     });
   } else {
-    // Handle File object
+    // Handle File or Blob object
     mimeType = fileOrUrl.type;
     data = await new Promise<string>((resolve) => {
       const reader = new FileReader();
@@ -60,7 +118,21 @@ export const generateProductImages = async (
   const clothingFile = formData.clothingImage;
   const consistencyFile = formData.consistencyReferenceImage;
 
-  const imagePart = await fileOrUrlToGenerativePart(imageFileOrUrl);
+  const aspectRatio = formData.aspectRatio as '16:9' | '9:16' | '1:1' | undefined;
+  let imageToSend: File | string | Blob = imageFileOrUrl;
+
+  // Experiment: Resize the input image to match the target aspect ratio
+  if (aspectRatio && imageFileOrUrl && aspectRatio !== '1:1') { 
+      try {
+          console.log(`Resizing image to ${aspectRatio}...`);
+          imageToSend = await resizeAndPadImage(imageFileOrUrl, aspectRatio);
+      } catch (e) {
+          console.error("Image resizing failed, sending original image.", e);
+          // Fallback to sending the original image
+      }
+  }
+
+  const imagePart = await fileOrUrlToGenerativePart(imageToSend);
   
   // Pass all form data to the template, including files for conditional logic
   const prompt = category.promptTemplate(formData as Record<string, string>);
@@ -91,8 +163,6 @@ export const generateProductImages = async (
   parts.push({ text: prompt });
 
   const contents = { parts };
-
-  const aspectRatio = formData.aspectRatio as '16:9' | '9:16' | '1:1' | undefined;
 
   const generateSingleImage = async (): Promise<string> => {
     const response: GenerateContentResponse = await ai.models.generateContent({

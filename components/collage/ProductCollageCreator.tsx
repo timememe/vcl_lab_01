@@ -310,7 +310,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   if (!isCollageMode) {
     // Traditional single product form
     return (
-      <div className="w-full max-w-4xl mx-auto p-6">
+      <div className="w-full max-w-7xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{t(category.nameKey)}</h1>
