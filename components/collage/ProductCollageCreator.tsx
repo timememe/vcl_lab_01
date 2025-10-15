@@ -144,11 +144,6 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     // 4. Style Settings (static - always advertising packshot)
     promptParts.push('Advertising packshot style, high-resolution, professional quality, commercial photography.');
 
-    // 5. Aspect Ratio
-    if (aspectRatio) {
-      promptParts.push(`Generated image must have an aspect ratio of ${aspectRatio}.`);
-    }
-
     const enhancedPrompt = promptParts.join('. ') + '.';
 
     // Create form data for AI generation
@@ -337,9 +332,9 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left Column - Settings */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:col-span-2">
             {/* Product Selection */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
@@ -494,7 +489,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
 
           {/* Right Column - Preview */}
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col lg:col-span-3">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">Preview</h3>
             <div className="flex-1 flex items-center justify-center min-h-[300px]">
               {isGenerating ? (
@@ -505,9 +500,9 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   <p className="text-sm">{error}</p>
                 </div>
               ) : generatedImages.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 w-full">
                   {generatedImages.map((image, index) => (
-                    <img key={index} src={image} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md" />
+                    <img key={index} src={image} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md w-full h-auto" />
                   ))}
                 </div>
               ) : (
