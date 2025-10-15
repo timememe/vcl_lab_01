@@ -114,7 +114,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     prompt += `The camera angle should be: "${cameraAngleDesc}".\n`;
 
     if (backgroundReference) {
-      prompt += `Use a background that matches the style and composition of the provided reference image.\n`;
+      prompt += `Take the product from the first image and place it in a new scene. The new scene\'s background, lighting, and overall style should be inspired by the second (reference) image.\n`;
     } else {
       prompt += `Use ${lightingDesc} with ${backgroundDesc}. The composition should be neat and organized.\n`;
     }
