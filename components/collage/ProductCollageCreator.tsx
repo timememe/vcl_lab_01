@@ -5,6 +5,7 @@ import { AIModel, Category } from '../../types';
 import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services/productCollagePresets';
 import { collageAiService, CollageAiRequest } from '../../services/collageAiService';
 import { collageExportService } from '../../services/collageExport';
+import { useLocalization } from '../../contexts/LocalizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface ProductCollageCreatorProps {
