@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { brandService } from '../services/brandService';
 import type { Brand, Product } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PresetSelectorProps {
   onPresetSelect: (preset: Product) => void;
@@ -17,6 +18,8 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
   selectedMode
 }) => {
   const { t } = useLocalization();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [brands, setBrands] = useState<Brand[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,38 +44,47 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
     loadBrands();
   }, []);
 
+  useEffect(() => {
+    // For non-admins, if not already on preset mode or no preset is selected, select the first one by default
+    if (!isAdmin && products.length > 0 && (selectedMode !== 'preset' || !selectedPreset)) {
+      onPresetSelect(products[0]);
+    }
+  }, [isAdmin, products, selectedMode, selectedPreset, onPresetSelect]);
+
   return (
     <div className="space-y-4">
       {/* Mode selection */}
-      <div className="flex space-x-4">
-        <button
-          type="button"
-          onClick={onUploadSelect}
-          className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
-            selectedMode === 'upload'
-              ? 'bg-red-600 text-white border-red-600'
-              : 'bg-white text-red-700 border-red-200 hover:border-red-300'
-          }`}
-        >
-          📁 {t('preset_option_upload')}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            // Switch to preset mode - if there are products available, select the first one
-            if (products.length > 0) {
-              onPresetSelect(products[0]);
-            }
-          }}
-          className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
-            selectedMode === 'preset'
-              ? 'bg-red-600 text-white border-red-600'
-              : 'bg-white text-red-700 border-red-200 hover:border-red-300'
-          }`}
-        >
-          🎨 {t('preset_option_choose')}
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex space-x-4">
+          <button
+            type="button"
+            onClick={onUploadSelect}
+            className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
+              selectedMode === 'upload'
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-red-700 border-red-200 hover:border-red-300'
+            }`}
+          >
+            📁 {t('preset_option_upload')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // Switch to preset mode - if there are products available, select the first one
+              if (products.length > 0) {
+                onPresetSelect(products[0]);
+              }
+            }}
+            className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
+              selectedMode === 'preset'
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-red-700 border-red-200 hover:border-red-300'
+            }`}
+          >
+            🎨 {t('preset_option_choose')}
+          </button>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && selectedMode === 'preset' && (

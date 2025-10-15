@@ -74,13 +74,16 @@ const VclLabApp: React.FC = () => {
 
   const handleGenerate = async (formData: Record<string, string | File>) => {
     if (!selectedCategory) return;
+
+    const modelToUse = isAdmin ? selectedModel : 'gemini';
+
     setIsGenerating(true);
     setGeneratedImages([]);
     setError(null);
     setLastGenerationData(formData);
 
     try {
-      const images = await generateImages(selectedModel, selectedCategory, formData);
+      const images = await generateImages(modelToUse, selectedCategory, formData);
       setGeneratedImages(images);
       setCurrentStep('generator'); // Stay on the generator screen
       await refreshUsage();
@@ -230,20 +233,22 @@ const VclLabApp: React.FC = () => {
                 KK
               </button>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setSelectedModel('gemini')}
-                className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'gemini' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
-              >
-                Gemini
-              </button>
-              <button
-                onClick={() => setSelectedModel('openai')}
-                className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'openai' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
-              >
-                GPT-Image-1
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setSelectedModel('gemini')}
+                  className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'gemini' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
+                >
+                  Gemini
+                </button>
+                <button
+                  onClick={() => setSelectedModel('openai')}
+                  className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'openai' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
+                >
+                  GPT-Image-1
+                </button>
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               {isAdmin && (
                 <button
