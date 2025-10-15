@@ -74,12 +74,145 @@ const createFormDataForOpenAI = async (file: File, prompt: string): Promise<Form
     return formData;
 };
 
+// Helper function for image editing using preset image
+const generateImageEdit = async (formData: Record<string, string | File>, prompt: string): Promise<string[]> => {
+    const imageFile = formData.productImage as File;
+
+    if (!imageFile) {
+        throw new Error("Image file is missing for image editing.");
+    }
+
+    try {
+        // Create proper FormData for the API
+        const formDataForAPI = await createFormDataForOpenAI(imageFile, prompt);
+
+        console.log(`Sending image edit request with file: ${imageFile.name}, type: ${imageFile.type}, size: ${imageFile.size} bytes`);
+        console.log(`Prompt: ${prompt}`);
+        console.log('Calling OpenAI API...');
+
+        // Use fetch API to call OpenAI images.edit endpoint with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
+        let data;
+        try {
+            const response = await fetch('https://api.openai.com/v1/images/edits', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                body: formDataForAPI,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            console.log(`Response status: ${response.status} ${response.statusText}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('OpenAI API Error Response:', errorText);
+
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    throw new Error(`OpenAI API Error: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+
+                throw new Error(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
+            }
+
+            data = await response.json();
+            console.log('Image edit response received successfully');
+        } catch (fetchError: any) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+                throw new Error('OpenAI API request timed out after 2 minutes');
+            }
+            throw fetchError;
+        }
+
+        if (!data.data || data.data.length === 0) {
+            throw new Error("OpenAI API did not return any images.");
+        }
+
+        // Handle both URL and base64 responses
+        const images = await Promise.all(data.data.map(async (item: any) => {
+            if (item.b64_json) {
+                return `data:image/png;base64,${item.b64_json}`;
+            } else if (item.url) {
+                // Convert URL to base64 for consistency
+                try {
+                    const imageResponse = await fetch(item.url);
+                    const imageBlob = await imageResponse.blob();
+                    return new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(imageBlob);
+                    });
+                } catch (error) {
+                    console.error('Error converting URL to base64:', error);
+                    return item.url;
+                }
+            }
+            throw new Error('No image data found in response');
+        }));
+
+        return images;
+    } catch (error) {
+        console.error("Error editing image with OpenAI:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Unknown error occurred while editing image with OpenAI.");
+    }
+};
+
 // Function for text-to-image generation
 const generateTextToImage = async (formData: Record<string, string | File>): Promise<string[]> => {
-    const prompt = formData.prompt as string || formData.customRequest as string || 'Generate a professional product image';
-    
-    console.log("Text-to-image prompt:", prompt);
-    
+    // Use the already formatted prompt from customRequest or prompt field
+    // The prompt is already structured in ProductCollageCreator with all necessary parts
+    const prompt = formData.customRequest as string || formData.prompt as string || 'Generate a professional product image';
+
+    console.log('FormData keys:', Object.keys(formData));
+    console.log('productName in formData:', formData.productName);
+    console.log('Final prompt for OpenAI:', prompt);
+
+    // Check if we have a preset image path to load
+    const presetImagePath = formData.presetImage as string;
+    if (presetImagePath) {
+        console.log("Loading preset image from path:", presetImagePath);
+        try {
+            // Load the image from the path (handle both absolute and relative URLs)
+            const imageUrl = presetImagePath.startsWith('http')
+                ? presetImagePath
+                : `${window.location.origin}${presetImagePath}`;
+
+            console.log("Fetching image from:", imageUrl);
+            const imageResponse = await fetch(imageUrl);
+
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+            }
+
+            const imageBlob = await imageResponse.blob();
+
+            // Ensure PNG format for OpenAI images/edits
+            const imageFile = new File([imageBlob], 'product.png', { type: 'image/png' });
+
+            // Use image editing instead of generation
+            console.log("Using image-to-image with preset image");
+            formData.productImage = imageFile;
+
+            // Generate using the image editing endpoint
+            return await generateImageEdit(formData, prompt);
+        } catch (error) {
+            console.error("Failed to load preset image, falling back to text-to-image:", error);
+            // Continue with text-to-image generation
+        }
+    }
+
     try {
         // Use OpenAI images/generations endpoint for text-to-image with gpt-image-1
         const response = await fetch('https://api.openai.com/v1/images/generations', {

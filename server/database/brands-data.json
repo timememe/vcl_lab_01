@@ -1,0 +1,146 @@
+{
+  "brands": [
+    {
+      "id": "dirol",
+      "name": "Dirol",
+      "logo": "/brands/dirol-logo.png",
+      "description": "Жевательная резинка для свежего дыхания",
+      "products": [
+        {
+          "id": "dirol-watermelon-melon",
+          "name": "Dirol Арбузно-дынный коктейль",
+          "category": "chewing-gum",
+          "image": "/products/dirol_1.png",
+          "presets": {
+            "background": "gradient",
+            "lighting": "bright",
+            "cameraAngle": "45deg",
+            "concept": "lifestyle",
+            "colors": {
+              "primary": "#FF6B9D",
+              "secondary": "#FFE135",
+              "accent": "#FF1493"
+            }
+          },
+          "promptTemplate": "Vibrant product photography of {productName}"
+        },
+        {
+          "id": "dirol-watermelon-fresh",
+          "name": "Dirol Арбузная свежесть",
+          "category": "chewing-gum",
+          "image": "/products/dirol_2.png",
+          "presets": {
+            "background": "gradient",
+            "lighting": "bright",
+            "cameraAngle": "top",
+            "concept": "modern_clean",
+            "colors": {
+              "primary": "#FF6B9D",
+              "secondary": "#90EE90",
+              "accent": "#00A651"
+            }
+          },
+          "promptTemplate": "Fresh and vibrant product photography of {productName}"
+        },
+        {
+          "id": "dirol-frosty-mint",
+          "name": "Dirol Морозная мята",
+          "category": "chewing-gum",
+          "image": "/products/dirol_3.png",
+          "presets": {
+            "background": "white",
+            "lighting": "soft",
+            "cameraAngle": "45deg",
+            "concept": "modern_clean",
+            "colors": {
+              "primary": "#00A651",
+              "secondary": "#FFFFFF",
+              "accent": "#00D4FF"
+            }
+          },
+          "promptTemplate": "Cool and refreshing product photography of {productName}"
+        }
+      ]
+    },
+    {
+      "id": "oreo",
+      "name": "Oreo",
+      "logo": "/brands/oreo-logo.png",
+      "description": "Легендарное печенье с кремовой начинкой",
+      "products": [
+        {
+          "id": "oreo-classic",
+          "name": "Oreo Classic",
+          "category": "cookies",
+          "image": "/products/oreo-classic.png",
+          "presets": {
+            "background": "studio",
+            "lighting": "dramatic",
+            "cameraAngle": "closeup",
+            "concept": "warm_natural",
+            "colors": {
+              "primary": "#000000",
+              "secondary": "#FFFFFF",
+              "accent": "#1E3A8A"
+            }
+          },
+          "promptTemplate": "Appetizing product photography of {productName}, iconic black cookies with white cream filling, dramatic studio lighting highlighting the contrast, dark blue studio background, close-up showing cookie texture and cream details"
+        },
+        {
+          "id": "oreo-golden",
+          "name": "Oreo Golden",
+          "category": "cookies",
+          "image": "/products/oreo-golden.png",
+          "presets": {
+            "background": "natural",
+            "lighting": "golden",
+            "cameraAngle": "45deg",
+            "concept": "warm_natural",
+            "colors": {
+              "primary": "#F4C430",
+              "secondary": "#FFFFFF",
+              "accent": "#FFD700"
+            }
+          },
+          "promptTemplate": "Warm product photography of {productName}, golden vanilla cookies with white cream, soft golden hour lighting, natural wood background, cozy and inviting atmosphere, emphasis on golden color"
+        },
+        {
+          "id": "oreo-doublestuft",
+          "name": "Oreo Double Stuf",
+          "category": "cookies",
+          "image": "/products/oreo-doublestuft.png",
+          "presets": {
+            "background": "minimalist",
+            "lighting": "bright",
+            "cameraAngle": "top",
+            "concept": "modern_clean",
+            "colors": {
+              "primary": "#000000",
+              "secondary": "#FFFFFF",
+              "accent": "#4A90E2"
+            }
+          },
+          "promptTemplate": "Bold product photography of {productName}, black cookies with extra thick white cream filling, bright even lighting, minimalist light gray background, top-down view showing the impressive cream layer"
+        },
+        {
+          "id": "oreo-thins",
+          "name": "Oreo Thins",
+          "category": "cookies",
+          "image": "/products/oreo-thins.png",
+          "presets": {
+            "background": "white",
+            "lighting": "soft",
+            "cameraAngle": "default",
+            "concept": "modern_clean",
+            "colors": {
+              "primary": "#000000",
+              "secondary": "#FFFFFF",
+              "accent": "#6B7280"
+            }
+          },
+          "promptTemplate": "Elegant product photography of {productName}, sleek thin black cookies with refined cream filling, soft diffused lighting, pure white background, emphasis on delicate and sophisticated appearance"
+        }
+      ]
+    }
+  ]
+}

@@ -24,3 +24,34 @@ export interface Category {
 }
 
 export type AIModel = 'gemini' | 'openai';
+
+export interface ProductPresets {
+  background: string;
+  lighting: string;
+  cameraAngle: string;
+  concept: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  image: string;
+  presets: ProductPresets;
+  promptTemplate: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  logo: string;
+  description: string;
+  products: Product[];
+  created_at?: string;
+  updated_at?: string;
+}

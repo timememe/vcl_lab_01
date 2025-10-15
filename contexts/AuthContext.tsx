@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { User } from '../types/auth';
-import { login as loginRequest } from '../services/authService';
+import { login as loginRequest, verifyToken, removeToken } from '../services/authService';
 
 interface AuthContextValue {
   user: User | null;
@@ -11,23 +11,28 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-const STORAGE_KEY = 'vcl_auth_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Verify JWT token on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const storedUser: User = JSON.parse(raw);
-        setUser(storedUser);
+    const checkAuth = async () => {
+      try {
+        const verifiedUser = await verifyToken();
+        if (verifiedUser) {
+          setUser(verifiedUser);
+        }
+      } catch (err) {
+        console.error('Auth verification failed:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (_err) {
-      // ignore corrupted storage
-    }
+    };
+
+    void checkAuth();
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
@@ -36,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const authenticatedUser = await loginRequest({ username, password });
       setUser(authenticatedUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authenticatedUser));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -48,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     setUser(null);
     setError(null);
-    localStorage.removeItem(STORAGE_KEY);
+    removeToken();
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({ user, loading, error, login, logout }), [user, loading, error, login, logout]);

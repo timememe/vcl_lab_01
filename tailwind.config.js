@@ -2,7 +2,27 @@
 export default {
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./contexts/**/*.{js,ts,jsx,tsx}",
+    "./pages/**/*.{js,ts,jsx,tsx}",
+    "./*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    // Grid classes
+    'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-6',
+    'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-3', 'xl:grid-cols-4', '2xl:grid-cols-6',
+    // Color variations
+    'bg-red-50', 'bg-red-100', 'bg-red-500', 'bg-red-600', 'bg-red-700',
+    'text-red-500', 'text-red-600', 'text-red-700',
+    'border-red-200', 'border-red-500',
+    // Hover states
+    'hover:bg-red-700', 'hover:opacity-80', 'hover:opacity-90',
+    'group-hover:opacity-80', 'group-hover:scale-105', 'group-hover:scale-110',
+    // Responsive spacing
+    'p-4', 'p-6', 'p-8', 'gap-6', 'gap-8',
+    // Animation classes
+    'transition-all', 'duration-300', 'transform',
   ],
   theme: {
     extend: {

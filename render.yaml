@@ -1,0 +1,16 @@
+services:
+  # Single service for both API and Frontend
+  - type: web
+    name: vcl-lab-01
+    env: node
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.9.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /api/health

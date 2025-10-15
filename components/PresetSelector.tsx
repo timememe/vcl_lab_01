@@ -1,24 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { ProductPreset, getPresetsForCategory } from '../presets';
+import { brandService } from '../services/brandService';
+import type { Brand, Product } from '../types';
 
 interface PresetSelectorProps {
-  categoryId: string;
-  onPresetSelect: (preset: ProductPreset) => void;
+  onPresetSelect: (preset: Product) => void;
   onUploadSelect: () => void;
-  selectedPreset?: ProductPreset | null;
+  selectedPreset?: Product | null;
   selectedMode: 'upload' | 'preset';
 }
 
-const PresetSelector: React.FC<PresetSelectorProps> = ({ 
-  categoryId, 
-  onPresetSelect, 
-  onUploadSelect, 
+const PresetSelector: React.FC<PresetSelectorProps> = ({
+  onPresetSelect,
+  onUploadSelect,
   selectedPreset,
-  selectedMode 
+  selectedMode
 }) => {
   const { t } = useLocalization();
-  const presets = getPresetsForCategory(categoryId);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load brands and their products (filtered by user's assigned brands)
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const data = await brandService.getBrands();
+        setBrands(data);
+
+        // Flatten all products from all assigned brands
+        // No category filtering - only show products from user's assigned brands
+        const allProducts = data.flatMap(brand => brand.products);
+        setProducts(allProducts);
+      } catch (err) {
+        console.error('Failed to load brands:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBrands();
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -38,10 +59,9 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
         <button
           type="button"
           onClick={() => {
-            // Switch to preset mode - if there are presets available, select the first one
-            const presets = getPresetsForCategory(categoryId);
-            if (presets.length > 0) {
-              onPresetSelect(presets[0]);
+            // Switch to preset mode - if there are products available, select the first one
+            if (products.length > 0) {
+              onPresetSelect(products[0]);
             }
           }}
           className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
@@ -54,23 +74,31 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
         </button>
       </div>
 
+      {/* Loading state */}
+      {loading && selectedMode === 'preset' && (
+        <div className="text-center py-8 text-gray-500">
+          <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+          <p className="mt-2">Loading presets...</p>
+        </div>
+      )}
+
       {/* Preset selection grid */}
-      {selectedMode === 'preset' && presets.length > 0 && (
+      {!loading && selectedMode === 'preset' && products.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {presets.map((preset) => (
+          {products.map((product) => (
             <div
-              key={preset.id}
-              onClick={() => onPresetSelect(preset)}
+              key={product.id}
+              onClick={() => onPresetSelect(product)}
               className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
-                selectedPreset?.id === preset.id
+                selectedPreset?.id === product.id
                   ? 'border-red-500 bg-red-50'
                   : 'border-gray-200 hover:border-red-300 bg-white'
               }`}
             >
               <div className="aspect-square bg-gray-100 rounded-md mb-2 overflow-hidden">
                 <img
-                  src={preset.imagePath}
-                  alt={t(preset.nameKey)}
+                  src={product.image}
+                  alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     // Fallback to placeholder if image fails to load
@@ -78,15 +106,17 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
                   }}
                 />
               </div>
-              <h3 className="font-medium text-sm text-gray-900">{t(preset.nameKey)}</h3>
-              <p className="text-xs text-gray-600 mt-1">{t(preset.descriptionKey)}</p>
+              <h3 className="font-medium text-sm text-gray-900">{product.name}</h3>
+              <p className="text-xs text-gray-600 mt-1">
+                {product.presets.concept} • {product.presets.lighting}
+              </p>
             </div>
           ))}
         </div>
       )}
 
       {/* No presets available message */}
-      {selectedMode === 'preset' && presets.length === 0 && (
+      {!loading && selectedMode === 'preset' && products.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <p>No presets available for this category yet.</p>
         </div>

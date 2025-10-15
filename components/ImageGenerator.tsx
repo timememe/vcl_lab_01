@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { Category, FormField } from '../types';
+import type { Category, FormField, Product } from '../types';
 import { useLocalization } from '../contexts/LocalizationContext';
-import { ProductPreset, getPresetById } from '../presets';
 import PresetSelector from './PresetSelector';
 
 interface ImageGeneratorProps {
@@ -19,7 +18,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
   const [modelPreview, setModelPreview] = useState<string | null>(null);
   const [clothingPreview, setClothingPreview] = useState<string | null>(null);
   const [consistencyPreview, setConsistencyPreview] = useState<string | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<ProductPreset | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
   const [inputMode, setInputMode] = useState<'upload' | 'preset'>('upload');
   const { t } = useLocalization();
 
@@ -97,18 +96,24 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
     }
   };
 
-  const handlePresetSelect = async (preset: ProductPreset) => {
+  const handlePresetSelect = async (preset: Product) => {
     setSelectedPreset(preset);
     setInputMode('preset');
-    
+
     try {
       // Load preset image as File object
-      const response = await fetch(preset.imagePath);
+      const response = await fetch(preset.image);
       const blob = await response.blob();
       const file = new File([blob], `${preset.id}.jpg`, { type: blob.type });
-      
-      setFormData(prev => ({ ...prev, productImage: file }));
-      setImagePreview(preset.imagePath);
+
+      setFormData(prev => ({
+        ...prev,
+        productImage: file,
+        presetId: preset.id,
+        presetPrompt: preset.promptTemplate,
+        productName: preset.name
+      }));
+      setImagePreview(preset.image);
     } catch (error) {
       console.error('Error loading preset image:', error);
     }
@@ -130,6 +135,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
         alert(t('alert_upload_required_image'));
         return;
     }
+    console.log('ImageGenerator formData before onGenerate:', Object.keys(formData));
+    console.log('productName before onGenerate:', formData.productName);
     onGenerate(formData);
   };
 
@@ -208,7 +215,6 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ category, onGenerate, o
             {field.type === 'file' && field.name === 'productImage' ? (
                 <div className="space-y-4">
                   <PresetSelector
-                    categoryId={category.id}
                     selectedMode={inputMode}
                     selectedPreset={selectedPreset}
                     onPresetSelect={handlePresetSelect}

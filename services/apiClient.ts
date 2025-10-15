@@ -46,6 +46,12 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   const headers = toHeaders(options.headers);
   headers.set('Content-Type', 'application/json');
 
+  // Add JWT token if available
+  const token = localStorage.getItem('vcl_auth_token');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const body = options.body;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   if (isFormData) {

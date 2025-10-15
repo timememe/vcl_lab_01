@@ -48,8 +48,8 @@ export const locales: { [key in Locale]: Translations } = {
     category_selector_subtitle: 'Выберите категорию, подходящую для вашей сферы деятельности.',
 
     // Categories
-    category_product_photo_name: 'Фотография продукта',
-    category_product_photo_desc: 'Создание профессиональных фотографий продуктов',
+    category_product_photo_name: 'Packshot Generator',
+    category_product_photo_desc: 'Создание профессиональных пекшотов продуктов',
     category_model_product_name: 'Модель с продуктом', 
     category_model_product_desc: 'Размещение продукта на модели',
     category_concept_art_name: 'Концепт-арт',
@@ -262,8 +262,8 @@ export const locales: { [key in Locale]: Translations } = {
     category_selector_subtitle: 'Please select a category that fits your business.',
 
     // Categories
-    category_product_photo_name: 'Product Photography',
-    category_product_photo_desc: 'Create professional product photos',
+    category_product_photo_name: 'Packshot Generator',
+    category_product_photo_desc: 'Create professional product packshots',
     category_model_product_name: 'Model with Product', 
     category_model_product_desc: 'Place product on model',
     category_concept_art_name: 'Concept Art',
