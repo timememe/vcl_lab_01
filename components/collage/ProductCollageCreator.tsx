@@ -356,7 +356,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-3">Aspect Ratio</h3>
               <div className="flex space-x-2">
-                {('9:16', '1:1', '16:9').map(ratio => (
+                {['9:16', '1:1', '16:9'].map(ratio => (
                   <button
                     key={ratio}
                     type="button"
