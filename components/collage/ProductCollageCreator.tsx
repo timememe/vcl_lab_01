@@ -55,6 +55,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
   const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
   const [aspectRatio, setAspectRatio] = useState('9:16');
+  const [cameraAngle, setCameraAngle] = useState('default');
 
   // Background reference image state
   const [backgroundReference, setBackgroundReference] = useState<File | null>(null);
@@ -76,98 +77,69 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       return;
     }
 
-    // Build modular prompt structure:
-    // 1. promptTemplate (from preset or default)
-    // 2. Background Settings
-    // 3. Additional Requests (optional)
-    // 4. Style Settings (static: advertising packshot style)
+    // --- New Prompt Generation Logic ---
 
-    let promptParts: string[] = [];
+    const productName = selectedMode === 'preset' && selectedPreset ? selectedPreset.name : (formData.productName as string || 'the product');
 
-    // 1. Prompt Template - base description
-    let basePrompt = 'Place this product packshot';
-
-    if (selectedMode === 'preset' && selectedPreset) {
-      // Use preset template if available
-      basePrompt = selectedPreset.promptTemplate || basePrompt;
-
-      // Replace {productName} placeholder with actual product name
-      if (basePrompt.includes('{productName}')) {
-        basePrompt = basePrompt.replace(/{productName}/g, selectedPreset.name);
-      }
-    }
-
-    promptParts.push(basePrompt);
-
-    // 2. Background Settings - use reference image OR text description
-    if (!backgroundReference) {
-      // Only add text-based background description if NO reference image is uploaded
-      let backgroundDescription = '';
-
-      if (selectedMode === 'preset' && selectedPreset && selectedPreset.presets?.background) {
-        // Use background from preset
-        const presetBgMap: Record<string, string> = {
-          'white': 'on a clean white background',
-          'black': 'on an elegant black background',
-          'gradient': 'on a gradient background',
-          'studio': 'in a professional studio setup',
-          'natural': 'in a natural environment background',
-          'minimalist': 'in a minimalist scene'
-        };
-        backgroundDescription = presetBgMap[selectedPreset.presets.background] || 'on a clean background';
-      } else if (formData.backgroundType) {
-        // Use background from form
-        const backgroundMap: Record<string, string> = {
-          'white': 'on a clean white background',
-          'black': 'on an elegant black background',
-          'gradient': 'on a gradient background',
-          'studio': 'in a professional studio setup',
-          'natural': 'in a natural environment background',
-          'minimalist': 'in a minimalist scene'
-        };
-        backgroundDescription = backgroundMap[formData.backgroundType as string] || 'on a clean background';
-      }
-
-      if (backgroundDescription) {
-        promptParts.push(`which is placed ${backgroundDescription}`);
-      }
-    } else {
-      // When background reference is provided, mention it in prompt
-      promptParts.push('with background matching the provided reference image');
-    }
-
-    // 3. Additional Requests (optional)
-    if (formData.customRequest) {
-      promptParts.push(formData.customRequest as string);
-    }
-
-    // 4. Style Settings (static - always advertising packshot)
-    promptParts.push('Advertising packshot style, high-resolution, professional quality, commercial photography.');
-
-    const enhancedPrompt = promptParts.join('. ') + '.';
-
-    // Create form data for AI generation
-    // Note: This is text-to-image generation, not image editing
-    // We need to handle this differently than image editing
-    const aiFormData = {
-      ...formData,
-      customRequest: enhancedPrompt,
-      // For text-to-image, we don't need a productImage
-      // The OpenAI service needs to be modified to handle text-to-image generation
-      generationType: 'text-to-image',
-      prompt: enhancedPrompt,
-      aspectRatio: aspectRatio, // Add aspect ratio to form data
+    const lightingMap: Record<string, string> = {
+      soft: 'soft and even lighting',
+      dramatic: 'dramatic shadows',
+      bright: 'bright and airy lighting',
+      golden: 'golden hour lighting',
+      studio: 'professional studio lighting',
     };
 
-    // Add preset data if preset mode is selected
+    const backgroundMap: Record<string, string> = {
+      white: 'a clean white background',
+      black: 'an elegant black background',
+      gradient: 'a smooth gradient background',
+      studio: 'a professional studio setting',
+      natural: 'a natural, outdoor environment',
+      minimalist: 'a minimalist scene',
+    };
+
+    const cameraAngleMap: Record<string, string> = {
+      default: 'a standard product photography angle',
+      closeup: 'a detailed close-up shot',
+      dutch_angle: 'a dynamic dutch angle shot',
+      top_down: 'a top-down, flat-lay perspective',
+    };
+
+    const lightingDesc = lightingMap[formData.lightingStyle as string] || 'professional studio lighting';
+    const backgroundDesc = backgroundMap[formData.backgroundType as string] || 'a clean background';
+    const cameraAngleDesc = cameraAngleMap[cameraAngle] || 'a standard product photography angle';
+
+    // Build the prompt using the new structure
+    let prompt = `Transform the uploaded image of a product named "${productName}".\n`;
+    prompt += `The camera angle should be: "${cameraAngleDesc}".\n`;
+
+    if (backgroundReference) {
+      prompt += `Use a background that matches the style and composition of the provided reference image.\n`;
+    } else {
+      prompt += `Use ${lightingDesc} with ${backgroundDesc}. The composition should be neat and organized.\n`;
+    }
+
+    if (formData.customRequest) {
+      prompt += `Additional requests: "${formData.customRequest as string}".\n`;
+    }
+
+    prompt += `The final image must be a hyper-realistic, high-resolution, and professional product photograph. Keep the product itself unchanged but recompose the entire scene around it.`;
+
+    const aiFormData = {
+      ...formData,
+      customRequest: prompt, // The whole structured prompt is now the main request
+      generationType: 'text-to-image',
+      prompt: prompt,
+      aspectRatio: aspectRatio,
+      cameraAngle: cameraAngle, // Pass camera angle in form data
+    };
+
     if (selectedMode === 'preset' && selectedPreset) {
       aiFormData.selectedPreset = selectedPreset.id;
       aiFormData.presetImage = selectedPreset.image;
       aiFormData.productName = selectedPreset.name;
-      // Don't set presetPrompt here - we already have the full prompt in customRequest/prompt
     }
 
-    // Add background reference image if uploaded
     if (backgroundReference) {
       aiFormData.backgroundReferenceImage = backgroundReference;
     }
@@ -402,6 +374,20 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                       <option value="bright">Bright & Airy</option>
                       <option value="golden">Golden Hour</option>
                       <option value="studio">Professional Studio</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
+                    <select
+                      value={cameraAngle}
+                      onChange={(e) => setCameraAngle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="default">Default Angle</option>
+                      <option value="closeup">Close-up</option>
+                      <option value="dutch_angle">Dutch Angle</option>
+                      <option value="top_down">Top-down</option>
                     </select>
                   </div>
                 </div>
