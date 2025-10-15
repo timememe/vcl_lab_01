@@ -319,24 +319,56 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
               />
             </div>
 
-            {/* Aspect Ratio Selection */}
+            {/* Composition Settings */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-3">Aspect Ratio</h3>
-              <div className="flex space-x-2">
-                {['9:16', '1:1', '16:9'].map(ratio => (
-                  <button
-                    key={ratio}
-                    type="button"
-                    onClick={() => setAspectRatio(ratio)}
-                    className={`flex-1 py-2 px-4 rounded-md border text-sm font-semibold transition-colors ${
-                      aspectRatio === ratio
-                        ? 'bg-red-600 text-white border-red-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
-                    }`}
+              <h3 className="text-lg font-semibold mb-3">Composition Settings</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
+                  <div className="flex space-x-2">
+                    {['9:16', '1:1', '16:9'].map(ratio => (
+                      <button
+                        key={ratio}
+                        type="button"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`flex-1 py-2 px-4 rounded-md border text-sm font-semibold transition-colors ${
+                          aspectRatio === ratio
+                            ? 'bg-red-600 text-white border-red-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
+                        }`}
+                      >
+                        {ratio}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lighting Style</label>
+                  <select
+                    value={formData.lightingStyle as string || 'soft'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   >
-                    {ratio}
-                  </button>
-                ))}
+                    <option value="soft">Soft & Even</option>
+                    <option value="dramatic">Dramatic Shadows</option>
+                    <option value="bright">Bright & Airy</option>
+                    <option value="golden">Golden Hour</option>
+                    <option value="studio">Professional Studio</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
+                  <select
+                    value={cameraAngle}
+                    onChange={(e) => setCameraAngle(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="default">Default Angle</option>
+                    <option value="closeup">Close-up</option>
+                    <option value="dutch_angle">Dutch Angle</option>
+                    <option value="top_down">Top-down</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -344,7 +376,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-4">Background Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left column: Background Type and Lighting Style */}
+                {/* Left column: Background Type */}
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Background Type</label>
@@ -359,35 +391,6 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                       <option value="studio">Studio Setup</option>
                       <option value="natural">Natural Environment</option>
                       <option value="minimalist">Minimalist Scene</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lighting Style</label>
-                    <select
-                      value={formData.lightingStyle as string || 'soft'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="soft">Soft & Even</option>
-                      <option value="dramatic">Dramatic Shadows</option>
-                      <option value="bright">Bright & Airy</option>
-                      <option value="golden">Golden Hour</option>
-                      <option value="studio">Professional Studio</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
-                    <select
-                      value={cameraAngle}
-                      onChange={(e) => setCameraAngle(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="default">Default Angle</option>
-                      <option value="closeup">Close-up</option>
-                      <option value="dutch_angle">Dutch Angle</option>
-                      <option value="top_down">Top-down</option>
                     </select>
                   </div>
                 </div>
