@@ -36,6 +36,28 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
   const [referenceImagePreview, setReferenceImagePreview] = React.useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = React.useState<string[]>([]);
 
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+      if (typeof initialData.productImage === 'string') {
+        setProductImagePreview(initialData.productImage);
+        if(initialData.productImage) {
+          setPreviewState('preview');
+        }
+      } else {
+        setProductImagePreview(null);
+      }
+
+      if (typeof initialData.referenceImage === 'string') {
+        setReferenceImagePreview(initialData.referenceImage);
+      } else {
+        setReferenceImagePreview(null);
+      }
+    } else {
+        setPreviewState('empty');
+    }
+  }, [initialData]);
+
   // Brand/Product state
   const [brands, setBrands] = React.useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = React.useState<Brand | null>(null);
