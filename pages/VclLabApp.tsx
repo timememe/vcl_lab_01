@@ -21,6 +21,7 @@ const VclLabApp: React.FC = () => {
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [lastGenerationData, setLastGenerationData] = useState<Record<string, string | File> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
   const [activeView, setActiveView] = useState<'generator' | 'admin' | 'sora'>('generator');
   const [usageSnapshot, setUsageSnapshot] = useState<UsageRecord | null>(null);
@@ -73,7 +74,7 @@ const VclLabApp: React.FC = () => {
 
   const handleGenerate = async (formData: Record<string, string | File>) => {
     if (!selectedCategory) return;
-    setCurrentStep('loading');
+    setIsGenerating(true);
     setGeneratedImages([]);
     setError(null);
     setLastGenerationData(formData);
@@ -81,13 +82,15 @@ const VclLabApp: React.FC = () => {
     try {
       const images = await generateImages(selectedModel, selectedCategory, formData);
       setGeneratedImages(images);
-      setCurrentStep('result');
+      setCurrentStep('generator'); // Stay on the generator screen
       await refreshUsage();
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(`${t('error_generation_failed')} ${errorMessage}`);
       setCurrentStep('generator');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -159,22 +162,13 @@ const VclLabApp: React.FC = () => {
               onGenerate={handleGenerate}
               onBack={handleBackToCategories}
               error={error}
+              isGenerating={isGenerating}
+              generatedImages={generatedImages}
               initialData={lastGenerationData}
             />
           );
         }
         return null;
-      case 'loading':
-        return <LoadingIndicator />;
-      case 'result':
-        return (
-          <ImageResult
-            images={generatedImages}
-            onBack={handleBackToGenerator}
-            onGenerateAgain={handleGenerateAgain}
-            onGoHome={handleBackToCategories}
-          />
-        );
       default:
         return <CategorySelector categories={CATEGORIES} onSelect={handleCategorySelect} />;
     }

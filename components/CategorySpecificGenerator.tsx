@@ -12,6 +12,8 @@ interface CategorySpecificGeneratorProps {
   onGenerate: (formData: Record<string, string | File>) => void;
   onBack: () => void;
   error: string | null;
+  isGenerating: boolean;
+  generatedImages: string[];
   initialData?: Record<string, string | File> | null;
 }
 
@@ -21,6 +23,8 @@ const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
   onGenerate,
   onBack,
   error,
+  isGenerating,
+  generatedImages,
   initialData,
 }) => {
   // Map category IDs to their specific form components
@@ -43,6 +47,8 @@ const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
         onGenerate={onGenerate}
         onBack={onBack}
         error={error}
+        isGenerating={isGenerating}
+        generatedImages={generatedImages}
         initialData={initialData}
       />
     );
@@ -57,6 +63,8 @@ const CategorySpecificGenerator: React.FC<CategorySpecificGeneratorProps> = ({
           onGenerate={onGenerate}
           onBack={onBack}
           error={error}
+          isGenerating={isGenerating}
+          generatedImages={generatedImages}
           initialData={initialData}
         />
       </div>

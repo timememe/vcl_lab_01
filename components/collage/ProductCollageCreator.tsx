@@ -11,7 +11,7 @@ import PresetSelector from '../PresetSelector';
 import CollageCanvas from './CollageCanvas';
 import BackgroundManager from './BackgroundManager';
 import ElementLabels from './ElementLabels';
-import InteractiveUploadGrid from './InteractiveUploadGrid';
+import LoadingIndicator from '../LoadingIndicator';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -19,6 +19,8 @@ interface ProductCollageCreatorProps {
   onGenerate: (formData: Record<string, string | File>) => void;
   onBack: () => void;
   error?: string | null;
+  isGenerating: boolean;
+  generatedImages: string[];
   initialData?: Record<string, string | File> | null;
 }
 
@@ -28,6 +30,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   onGenerate,
   onBack,
   error,
+  isGenerating,
+  generatedImages,
   initialData
 }) => {
   const { t } = useLocalization();
@@ -464,24 +468,39 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">Preview</h3>
             <div className="flex-1 flex items-center justify-center min-h-[300px]">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gray-200 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                  <Camera className="w-8 h-8 text-gray-400" />
+              {isGenerating ? (
+                <LoadingIndicator />
+              ) : error ? (
+                <div className="text-center text-red-500">
+                  <p className="font-bold">Generation Failed</p>
+                  <p className="text-sm">{error}</p>
                 </div>
-                <p className="text-gray-500 text-sm">
-                  {selectedMode === 'preset'
-                    ? (selectedPreset ? `Ready to generate ${selectedPreset.nameKey} photo` : 'Select a product preset to see preview')
-                    : 'Upload mode selected'
-                  }
-                </p>
-                {selectedPreset && (
-                  <div className="mt-3 text-xs text-gray-400 space-y-1">
-                    <p>Style: {formData.conceptPreset?.replace('option_concept_', '').replace('_', ' & ')}</p>
-                    <p>Background: {formData.backgroundType || 'white'}</p>
-                    <p>Lighting: {formData.lightingStyle || 'soft'}</p>
+              ) : generatedImages.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {generatedImages.map((image, index) => (
+                    <img key={index} src={image} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md" />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-gray-200 rounded-lg mb-4 mx-auto flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-gray-400" />
                   </div>
-                )}
-              </div>
+                  <p className="text-gray-500 text-sm">
+                    {selectedMode === 'preset'
+                      ? (selectedPreset ? `Ready to generate ${selectedPreset.nameKey} photo` : 'Select a product preset to see preview')
+                      : 'Upload mode selected'
+                    }
+                  </p>
+                  {selectedPreset && (
+                    <div className="mt-3 text-xs text-gray-400 space-y-1">
+                      <p>Style: {formData.conceptPreset?.replace('option_concept_', '').replace('_', ' & ')}</p>
+                      <p>Background: {formData.backgroundType || 'white'}</p>
+                      <p>Lighting: {formData.lightingStyle || 'soft'}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

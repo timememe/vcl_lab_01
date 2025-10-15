@@ -3,6 +3,8 @@ import type { Category } from '../types';
 import { useLocalization } from '../contexts/LocalizationContext';
 import { Card, CardContent } from './ui/card';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { cn } from '../lib/utils';
 
 interface CategorySelectorProps {
   categories: Category[];
@@ -11,6 +13,7 @@ interface CategorySelectorProps {
 
 const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelect }) => {
   const { t } = useLocalization();
+  const { user } = useAuth();
 
   const getCategoryGradient = (categoryId: string) => {
     const gradients: Record<string, string> = {
@@ -54,46 +57,68 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelec
 
       {/* Categories Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
-        {categories.map((category, index) => (
-          <Card 
-            key={category.id}
-            className={`group cursor-pointer border-2 border-transparent hover:border-red-200 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl overflow-hidden bg-gradient-to-br ${getCategoryBg(category.id)} hover:opacity-90`}
-            onClick={() => onSelect(category)}
-          >
-            <CardContent className="relative p-4 text-center h-full flex flex-col min-h-[200px]">
-              {/* Icon with animated background */}
-              <div className="relative mb-4">
-                <div className={`relative p-3 bg-gradient-to-br ${getCategoryGradient(category.id)} rounded-xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 mx-auto w-fit`}>
-                  <div className="text-white">
-                    {category.icon}
+        {categories.map((category, index) => {
+          const isEnabled = user?.role === 'admin' || category.id === 'product_photo';
+          return (
+            <Card 
+              key={category.id}
+              className={cn(
+                'border-2 border-transparent transition-all duration-300 transform overflow-hidden',
+                getCategoryBg(category.id),
+                isEnabled 
+                  ? 'group cursor-pointer hover:border-red-200 hover:scale-[1.02] hover:shadow-2xl hover:opacity-90' 
+                  : 'opacity-50 cursor-not-allowed'
+              )}
+              onClick={() => isEnabled && onSelect(category)}
+            >
+              <CardContent className="relative p-4 text-center h-full flex flex-col min-h-[200px]">
+                {/* Icon with animated background */}
+                <div className="relative mb-4">
+                  <div className={cn(
+                    'relative p-3 rounded-xl shadow-lg transform transition-transform duration-300 mx-auto w-fit',
+                    getCategoryGradient(category.id),
+                    isEnabled && 'group-hover:scale-105'
+                  )}>
+                    <div className="text-white">
+                      {category.icon}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Content */}
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-red-700 transition-colors duration-300">
-                    {t(category.nameKey)}
-                  </h3>
-                  <p className="text-xs text-gray-600 leading-relaxed mb-3">
-                    {t(category.descriptionKey)}
-                  </p>
+                {/* Content */}
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className={cn(
+                      'text-lg font-bold text-gray-800 mb-2 transition-colors duration-300',
+                      isEnabled && 'group-hover:text-red-700'
+                    )}>
+                      {t(category.nameKey)}
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                      {t(category.descriptionKey)}
+                    </p>
+                  </div>
+
+                  {/* Action indicator */}
+                  {isEnabled && (
+                    <div className="flex items-center justify-center gap-1 text-red-600 font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                      <span className="text-xs">Get Started</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
                 </div>
 
-                {/* Action indicator */}
-                <div className="flex items-center justify-center gap-1 text-red-600 font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                  <span className="text-xs">Get Started</span>
-                  <ArrowRight className="w-3 h-3" />
-                </div>
-              </div>
-
-              {/* Decorative elements */}
-              <div className="absolute top-1 right-1 w-6 h-6 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="absolute bottom-1 left-1 w-4 h-4 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </CardContent>
-          </Card>
-        ))}
+                {/* Decorative elements */}
+                {isEnabled && (
+                  <>
+                    <div className="absolute top-1 right-1 w-6 h-6 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute bottom-1 left-1 w-4 h-4 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  </>
+                )}
+              </CardContent>
+            </Card> 
+          )
+        })}
       </div>
 
       {/* Bottom decoration */}
