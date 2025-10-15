@@ -5,13 +5,7 @@ import { AIModel, Category } from '../../types';
 import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services/productCollagePresets';
 import { collageAiService, CollageAiRequest } from '../../services/collageAiService';
 import { collageExportService } from '../../services/collageExport';
-import { useLocalization } from '../../contexts/LocalizationContext';
-import { Product } from '../../types';
-import PresetSelector from '../PresetSelector';
-import CollageCanvas from './CollageCanvas';
-import BackgroundManager from './BackgroundManager';
-import ElementLabels from './ElementLabels';
-import LoadingIndicator from '../LoadingIndicator';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -35,6 +29,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   initialData
 }) => {
   const { t } = useLocalization();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   // Collage mode toggle
   const [isCollageMode, setIsCollageMode] = useState(false);
@@ -51,6 +47,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   // Preset selection state
   const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
   const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
+  const [aspectRatio, setAspectRatio] = useState('9:16');
 
   // Background reference image state
   const [backgroundReference, setBackgroundReference] = useState<File | null>(null);
@@ -140,6 +137,11 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     // 4. Style Settings (static - always advertising packshot)
     promptParts.push('Advertising packshot style, high-resolution, professional quality, commercial photography.');
 
+    // 5. Aspect Ratio
+    if (aspectRatio) {
+      promptParts.push(`Generated image must have an aspect ratio of ${aspectRatio}.`);
+    }
+
     const enhancedPrompt = promptParts.join('. ') + '.';
 
     // Create form data for AI generation
@@ -151,7 +153,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       // For text-to-image, we don't need a productImage
       // The OpenAI service needs to be modified to handle text-to-image generation
       generationType: 'text-to-image',
-      prompt: enhancedPrompt
+      prompt: enhancedPrompt,
+      aspectRatio: aspectRatio, // Add aspect ratio to form data
     };
 
     // Add preset data if preset mode is selected
@@ -312,22 +315,24 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             <p className="text-gray-600">{t(category.descriptionKey)}</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setIsCollageMode(true)}
-              className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-            >
-              <ImageIcon className="w-4 h-4 mr-2" />
-              Switch to Collage Mode
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsCollageMode(true)}
+                className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+              >
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Switch to Collage Mode
+              </button>
+            )}
             <button onClick={onBack} className="px-4 py-2 text-gray-600 hover:text-gray-800">
               ← Back to Categories
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-250px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Settings */}
-          <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-250px)]">
+          <div className="space-y-4">
             {/* Product Selection */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
@@ -338,6 +343,27 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 selectedPreset={selectedPreset}
                 selectedMode={selectedMode}
               />
+            </div>
+
+            {/* Aspect Ratio Selection */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3">Aspect Ratio</h3>
+              <div className="flex space-x-2">
+                {('9:16', '1:1', '16:9').map(ratio => (
+                  <button
+                    key={ratio}
+                    type="button"
+                    onClick={() => setAspectRatio(ratio)}
+                    className={`flex-1 py-2 px-4 rounded-md border text-sm font-semibold transition-colors ${
+                      aspectRatio === ratio
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
+                    }`}
+                  >
+                    {ratio}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Background Settings */}
