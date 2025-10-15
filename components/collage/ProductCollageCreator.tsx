@@ -332,11 +332,11 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-[calc(100vh-250px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left Column - Settings */}
-          <div className="space-y-4 lg:col-span-2 overflow-y-auto max-h-[calc(100vh-250px)]">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:col-span-2 self-start">
             {/* Product Selection */}
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 xl:col-span-2">
               <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
               <PresetSelector
                 categoryId={category.id}
