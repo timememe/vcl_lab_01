@@ -96,7 +96,7 @@ export const generateProductImages = async (
 
   const generateSingleImage = async (): Promise<string> => {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image-preview',
+      model: 'gemini-2.5-flash-image',
       contents: contents,
       config: {
         responseModalities: [Modality.IMAGE, Modality.TEXT],

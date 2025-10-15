@@ -332,9 +332,9 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-[calc(100vh-250px)]">
           {/* Left Column - Settings */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-2 overflow-y-auto max-h-[calc(100vh-250px)]">
             {/* Product Selection */}
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
@@ -500,9 +500,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   <p className="text-sm">{error}</p>
                 </div>
               ) : generatedImages.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4 w-full">
+                <div className="w-full h-full flex flex-wrap justify-center items-center gap-4 p-4 overflow-y-auto">
                   {generatedImages.map((image, index) => (
-                    <img key={index} src={image} alt={`Generated ${index + 1}`} className="rounded-lg shadow-md w-full h-auto" />
+                    <img 
+                      key={index} 
+                      src={image} 
+                      alt={`Generated ${index + 1}`} 
+                      className="rounded-lg shadow-md object-contain max-w-full max-h-[calc(100vh-400px)]" 
+                    />
                   ))}
                 </div>
               ) : (
