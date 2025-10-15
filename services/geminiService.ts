@@ -49,7 +49,8 @@ export const generateProductImages = async (
   formData: Record<string, string | File>
 ): Promise<string[]> => {
   
-  const imageFileOrUrl = formData.productImage;
+  // Check for productImage (from file upload) or presetImage (from preset selection)
+  const imageFileOrUrl = formData.productImage || formData.presetImage;
   if (!imageFileOrUrl) {
     throw new Error("Image file is missing.");
   }
