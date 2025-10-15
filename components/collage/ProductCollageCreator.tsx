@@ -65,7 +65,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
 
   const [activeTab, setActiveTab] = useState<'canvas' | 'background' | 'labels' | 'settings'>('canvas');
   const [customPrompt, setCustomPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+
   // Traditional form handlers
   const handleTraditionalGenerate = () => {
     if (selectedMode === 'preset' && !selectedPreset) {
@@ -225,8 +225,6 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       return;
     }
 
-    setIsGenerating(true);
-
     try {
       // Export collage first
       const exportResult = await collageExportService.exportCollage(collageState, {
@@ -288,8 +286,6 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       onGenerate(enhancedFormData);
     } catch (err) {
       console.error('Collage generation error:', err);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
