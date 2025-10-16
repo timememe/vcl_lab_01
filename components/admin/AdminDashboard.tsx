@@ -93,10 +93,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
     }
   }, [translate]);
 
-  const handleBrandDataChanged = useCallback(() => {
-    void loadBrands();
-    void loadUsers();
-  }, [loadBrands, loadUsers]);
 
   const loadBrands = useCallback(async () => {
     setBrandsLoading(true);
@@ -110,6 +106,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
       setBrandsLoading(false);
     }
   }, [translate]);
+
+  const handleBrandDataChanged = useCallback(() => {
+    void loadBrands();
+    void loadUsers();
+  }, [loadBrands, loadUsers]);
 
   const toggleBrandSelection = (brandId: string) => {
     setUserForm((prev) => {
