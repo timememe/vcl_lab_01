@@ -3,6 +3,9 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import sharp from 'sharp';
 import { Blob } from 'buffer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   userQueries,
   brandQueries,
@@ -13,6 +16,23 @@ import {
   transaction
 } from './database/db.js';
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const UPLOAD_ROOT = path.join(__dirname, '..', 'public', 'uploads');
+const BRAND_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'brands');
+const PRODUCT_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'products');
+
+const ensureDirectory = (directoryPath) => {
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath, { recursive: true });
+  }
+};
+
+ensureDirectory(UPLOAD_ROOT);
+ensureDirectory(BRAND_UPLOAD_DIR);
+ensureDirectory(PRODUCT_UPLOAD_DIR);
 
 const DEFAULT_VIDEO_SIZE = '720x1280';
 
@@ -145,6 +165,139 @@ const normalizeSoraResponse = (data) => {
     statusMessage,
     error: errorDetails
   };
+};
+
+const MIME_EXTENSIONS = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif'
+};
+
+const sanitizeFileBaseName = (value, fallback) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return fallback;
+  }
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || fallback;
+};
+
+const parseBase64ImagePayload = (payload) => {
+  if (typeof payload !== 'string' || payload.length === 0) {
+    return null;
+  }
+
+  let data = payload;
+  let mimeType = 'image/png';
+
+  const dataUrlMatch = payload.match(/^data:([^;]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    mimeType = dataUrlMatch[1];
+    data = dataUrlMatch[2];
+  }
+
+  try {
+    const buffer = Buffer.from(data, 'base64');
+    if (!buffer.length) {
+      return null;
+    }
+    return { buffer, mimeType };
+  } catch (_error) {
+    return null;
+  }
+};
+
+const saveBase64Image = (base64, originalName, targetDir, relativeDir, prefix) => {
+  const parsed = parseBase64ImagePayload(base64);
+  if (!parsed) {
+    throw new Error('Invalid image payload.');
+  }
+
+  let extension = '';
+  if (typeof originalName === 'string') {
+    extension = path.extname(originalName).replace('.', '').toLowerCase();
+  }
+  if (!extension && parsed.mimeType) {
+    extension = MIME_EXTENSIONS[parsed.mimeType.toLowerCase()] || '';
+  }
+  if (!extension) {
+    extension = 'png';
+  }
+
+  const safeBase = sanitizeFileBaseName(originalName, prefix);
+  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+  const fileName = `${safeBase}-${uniqueSuffix}.${extension}`;
+  const absolutePath = path.join(targetDir, fileName);
+
+  fs.writeFileSync(absolutePath, parsed.buffer);
+
+  return path.posix.join('/uploads', relativeDir, fileName);
+};
+
+const serializeBrandRecord = (record) => ({
+  id: record.id,
+  name: record.name,
+  logo: record.logo,
+  description: record.description,
+  products: (() => {
+    try {
+      const parsed = JSON.parse(record.products || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_error) {
+      return [];
+    }
+  })(),
+  created_at: record.created_at,
+  updated_at: record.updated_at
+});
+
+const getBrandById = (brandId) => {
+  const record = brandQueries.findById.get(brandId);
+  if (!record) {
+    return null;
+  }
+  return serializeBrandRecord(record);
+};
+
+const persistBrandProducts = (brandId, products) => {
+  const record = brandQueries.findById.get(brandId);
+  if (!record) {
+    throw new Error('Brand not found');
+  }
+  brandQueries.update.run(
+    record.name,
+    record.logo,
+    record.description,
+    JSON.stringify(products),
+    brandId
+  );
+};
+
+const parsePresetsPayload = (value) => {
+  if (typeof value === 'undefined') {
+    return undefined;
+  }
+
+  let parsed = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch (_error) {
+      throw new Error('Invalid presets payload. Expected valid JSON.');
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('Invalid presets payload. Expected object.');
+  }
+
+  return parsed;
 };
 
 const parseAssignedBrands = (value) => {
@@ -635,6 +788,392 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
 });
 
 // ============================================================
+// Admin brand management endpoints
+// ============================================================
+
+app.get('/api/admin/brands', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const brands = brandQueries.findAll.all().map(serializeBrandRecord);
+    res.json(brands);
+  } catch (error) {
+    console.error('List admin brands error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/api/admin/brands', authMiddleware, adminMiddleware, (req, res) => {
+  const {
+    id,
+    name,
+    description,
+    logoBase64,
+    logoFilename,
+    logo,
+    products
+  } = req.body || {};
+
+  const trimmedId = typeof id === 'string' ? id.trim().toLowerCase() : '';
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+
+  if (!trimmedId || !/^[a-z0-9-_.]+$/.test(trimmedId)) {
+    return res.status(400).json({ message: 'Brand id must contain only alphanumeric characters, dashes, underscores or dots.' });
+  }
+
+  if (!trimmedName) {
+    return res.status(400).json({ message: 'Brand name is required.' });
+  }
+
+  const existing = brandQueries.findById.get(trimmedId);
+  if (existing) {
+    return res.status(409).json({ message: 'Brand with this id already exists.' });
+  }
+
+  let resolvedLogo = typeof logo === 'string' && logo.trim() ? logo.trim() : '';
+
+  if (logoBase64) {
+    try {
+      resolvedLogo = saveBase64Image(
+        logoBase64,
+        logoFilename,
+        BRAND_UPLOAD_DIR,
+        'brands',
+        trimmedId || 'brand'
+      );
+    } catch (error) {
+      console.error('Brand logo upload error:', error);
+      return res.status(400).json({ message: 'Failed to process brand logo image.' });
+    }
+  }
+
+  const descriptionText = typeof description === 'string' ? description : '';
+
+  let initialProducts = [];
+  if (typeof products !== 'undefined') {
+    if (!Array.isArray(products)) {
+      return res.status(400).json({ message: 'Products must be an array.' });
+    }
+    initialProducts = products;
+  }
+
+  try {
+    brandQueries.create.run(
+      trimmedId,
+      trimmedName,
+      resolvedLogo || null,
+      descriptionText,
+      JSON.stringify(initialProducts)
+    );
+
+    const created = getBrandById(trimmedId);
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Create brand error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.put('/api/admin/brands/:brandId', authMiddleware, adminMiddleware, (req, res) => {
+  const { brandId } = req.params;
+  const targetId = brandId.trim();
+  const existing = getBrandById(targetId);
+
+  if (!existing) {
+    return res.status(404).json({ message: 'Brand not found.' });
+  }
+
+  const {
+    name,
+    description,
+    logoBase64,
+    logoFilename,
+    logo,
+    products
+  } = req.body || {};
+
+  const updatedName = typeof name === 'string' && name.trim() ? name.trim() : existing.name;
+  const updatedDescription = typeof description === 'string' ? description : existing.description;
+
+  let updatedLogo = typeof logo === 'string' && logo.trim() ? logo.trim() : existing.logo;
+
+  if (logoBase64) {
+    try {
+      updatedLogo = saveBase64Image(
+        logoBase64,
+        logoFilename,
+        BRAND_UPLOAD_DIR,
+        'brands',
+        targetId || 'brand'
+      );
+    } catch (error) {
+      console.error('Brand logo update error:', error);
+      return res.status(400).json({ message: 'Failed to process brand logo image.' });
+    }
+  }
+
+  let updatedProducts = existing.products;
+  if (typeof products !== 'undefined') {
+    if (!Array.isArray(products)) {
+      return res.status(400).json({ message: 'Products must be an array.' });
+    }
+    updatedProducts = products;
+  }
+
+  try {
+    brandQueries.update.run(
+      updatedName,
+      updatedLogo || null,
+      updatedDescription,
+      JSON.stringify(updatedProducts),
+      targetId
+    );
+
+    const updated = getBrandById(targetId);
+    res.json(updated);
+  } catch (error) {
+    console.error('Update brand error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.delete('/api/admin/brands/:brandId', authMiddleware, adminMiddleware, (req, res) => {
+  const { brandId } = req.params;
+  const targetId = brandId.trim();
+  const existing = getBrandById(targetId);
+
+  if (!existing) {
+    return res.status(404).json({ message: 'Brand not found.' });
+  }
+
+  try {
+    brandQueries.delete.run(targetId);
+
+    const users = userQueries.list.all();
+    users.forEach((user) => {
+      const assigned = parseAssignedBrands(user.assigned_brands);
+      if (assigned.includes(targetId)) {
+        const updatedAssigned = assigned.filter((id) => id !== targetId);
+        userQueries.updateBrands.run(JSON.stringify(updatedAssigned), user.id);
+      }
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete brand error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/api/admin/brands/:brandId/products', authMiddleware, adminMiddleware, (req, res) => {
+  const { brandId } = req.params;
+  const brand = getBrandById(brandId.trim());
+
+  if (!brand) {
+    return res.status(404).json({ message: 'Brand not found.' });
+  }
+
+  const {
+    id,
+    name,
+    category,
+    promptTemplate,
+    presets,
+    imageBase64,
+    imageFilename,
+    image
+  } = req.body || {};
+
+  const productId = typeof id === 'string' ? id.trim() : '';
+  const productName = typeof name === 'string' ? name.trim() : '';
+  const productCategory = typeof category === 'string' ? category.trim() : '';
+  const productPrompt = typeof promptTemplate === 'string' ? promptTemplate : '';
+
+  if (!productId) {
+    return res.status(400).json({ message: 'Product id is required.' });
+  }
+  if (!productName) {
+    return res.status(400).json({ message: 'Product name is required.' });
+  }
+  if (!productCategory) {
+    return res.status(400).json({ message: 'Product category is required.' });
+  }
+
+  const existingProduct = brand.products.find((product) => product.id === productId);
+  if (existingProduct) {
+    return res.status(409).json({ message: 'Product with this id already exists in the brand.' });
+  }
+
+  let productImage = typeof image === 'string' && image.trim() ? image.trim() : '';
+
+  if (imageBase64) {
+    try {
+      productImage = saveBase64Image(
+        imageBase64,
+        imageFilename,
+        PRODUCT_UPLOAD_DIR,
+        'products',
+        productId || 'product'
+      );
+    } catch (error) {
+      console.error('Product image upload error:', error);
+      return res.status(400).json({ message: 'Failed to process product image.' });
+    }
+  }
+
+  if (!productImage) {
+    return res.status(400).json({ message: 'Product image is required.' });
+  }
+
+  let parsedPresets = {};
+  try {
+    const result = parsePresetsPayload(presets);
+    if (typeof result !== 'undefined') {
+      parsedPresets = result;
+    }
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const newProduct = {
+    id: productId,
+    name: productName,
+    category: productCategory,
+    image: productImage,
+    promptTemplate: productPrompt,
+    presets: parsedPresets
+  };
+
+  try {
+    const updatedProducts = [...brand.products, newProduct];
+    brandQueries.update.run(
+      brand.name,
+      brand.logo,
+      brand.description,
+      JSON.stringify(updatedProducts),
+      brand.id
+    );
+
+    const updatedBrand = getBrandById(brand.id);
+    res.status(201).json(updatedBrand);
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.put('/api/admin/brands/:brandId/products/:productId', authMiddleware, adminMiddleware, (req, res) => {
+  const { brandId, productId } = req.params;
+  const brand = getBrandById(brandId.trim());
+
+  if (!brand) {
+    return res.status(404).json({ message: 'Brand not found.' });
+  }
+
+  const index = brand.products.findIndex((product) => product.id === productId);
+  if (index === -1) {
+    return res.status(404).json({ message: 'Product not found.' });
+  }
+
+  const {
+    name,
+    category,
+    promptTemplate,
+    presets,
+    imageBase64,
+    imageFilename,
+    image
+  } = req.body || {};
+
+  const updatedProducts = [...brand.products];
+  const current = { ...updatedProducts[index] };
+
+  if (typeof name === 'string' && name.trim()) {
+    current.name = name.trim();
+  }
+  if (typeof category === 'string' && category.trim()) {
+    current.category = category.trim();
+  }
+  if (typeof promptTemplate === 'string') {
+    current.promptTemplate = promptTemplate;
+  }
+  if (typeof image === 'string' && image.trim()) {
+    current.image = image.trim();
+  }
+
+  if (imageBase64) {
+    try {
+      current.image = saveBase64Image(
+        imageBase64,
+        imageFilename,
+        PRODUCT_UPLOAD_DIR,
+        'products',
+        productId || 'product'
+      );
+    } catch (error) {
+      console.error('Product image update error:', error);
+      return res.status(400).json({ message: 'Failed to process product image.' });
+    }
+  }
+
+  if (typeof presets !== 'undefined') {
+    try {
+      const parsed = parsePresetsPayload(presets);
+      current.presets = parsed;
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  updatedProducts[index] = current;
+
+  try {
+    brandQueries.update.run(
+      brand.name,
+      brand.logo,
+      brand.description,
+      JSON.stringify(updatedProducts),
+      brand.id
+    );
+
+    const updatedBrand = getBrandById(brand.id);
+    res.json(updatedBrand);
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.delete('/api/admin/brands/:brandId/products/:productId', authMiddleware, adminMiddleware, (req, res) => {
+  const { brandId, productId } = req.params;
+  const brand = getBrandById(brandId.trim());
+
+  if (!brand) {
+    return res.status(404).json({ message: 'Brand not found.' });
+  }
+
+  const updatedProducts = brand.products.filter((product) => product.id !== productId);
+
+  if (updatedProducts.length === brand.products.length) {
+    return res.status(404).json({ message: 'Product not found.' });
+  }
+
+  try {
+    brandQueries.update.run(
+      brand.name,
+      brand.logo,
+      brand.description,
+      JSON.stringify(updatedProducts),
+      brand.id
+    );
+
+    const updatedBrand = getBrandById(brand.id);
+    res.json(updatedBrand);
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
 // Admin user management endpoints
 // ============================================================
 
@@ -1085,13 +1624,10 @@ app.get('/api/health', (req, res) => {
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-  const path = await import('path');
-  const { fileURLToPath } = await import('url');
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
+  const distDir = path.join(__dirname, '..', 'dist');
 
   // Serve static files with correct MIME types
-  app.use(express.static(path.join(__dirname, '..', 'dist')));
+  app.use(express.static(distDir));
 
   // Fallback to index.html for SPA routing (only for HTML requests, not assets)
   app.get('*', (req, res, next) => {
@@ -1107,7 +1643,7 @@ if (process.env.NODE_ENV === 'production') {
     }
 
     // Send index.html for SPA routes
-    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    res.sendFile(path.join(distDir, 'index.html'));
   });
 }
 

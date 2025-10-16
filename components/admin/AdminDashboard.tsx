@@ -8,6 +8,7 @@ import type { UsageRecord, UsageUpdatePayload } from '../../types/usage';
 import type { AdminUser, AdminUserPayload } from '../../types/admin';
 import type { Brand } from '../../types';
 import { CATEGORIES } from '../../constants';
+import BrandManager from './BrandManager';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -48,7 +49,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'usage' | 'users'>('usage');
+  const [activeTab, setActiveTab] = useState<'usage' | 'users' | 'brands'>('usage');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersLoaded, setUsersLoaded] = useState(false);
@@ -91,6 +92,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
       setUsersLoading(false);
     }
   }, [translate]);
+
+  const handleBrandDataChanged = useCallback(() => {
+    void loadBrands();
+    void loadUsers();
+  }, [loadBrands, loadUsers]);
 
   const loadBrands = useCallback(async () => {
     setBrandsLoading(true);
@@ -792,9 +798,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
         >
           {translate('admin_tab_users', 'User management')}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('brands')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'brands'
+              ? 'bg-red-600 text-white shadow-sm'
+              : 'bg-red-50 text-red-700 hover:bg-red-100'
+          }`}
+        >
+          {translate('admin_tab_brands', 'Brand management')}
+        </button>
       </div>
 
-      {activeTab === 'usage' ? renderUsageSection() : renderUserManagementSection()}
+      {activeTab === 'usage' && renderUsageSection()}
+      {activeTab === 'users' && renderUserManagementSection()}
+      {activeTab === 'brands' && (
+        <BrandManager onDataChanged={handleBrandDataChanged} />
+      )}
     </div>
   );
 
