@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { getToken } from './authService';
 
 export interface SoraGenerationParams {
   prompt: string;
@@ -90,7 +91,7 @@ export const checkSoraVideoStatus = async (
 };
 
 export const downloadSoraVideo = async (requestId: string): Promise<Blob> => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
 
   if (!token) {
     throw new Error('No authentication token found');

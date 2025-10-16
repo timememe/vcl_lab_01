@@ -97,8 +97,15 @@ export const userQueries = {
   create: db.prepare('INSERT INTO users (username, password_hash, role, assigned_brands) VALUES (?, ?, ?, ?)'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   updateBrands: db.prepare('UPDATE users SET assigned_brands = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  updateCore: db.prepare(`
+    UPDATE users
+    SET username = ?, role = ?, assigned_brands = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `),
   delete: db.prepare('DELETE FROM users WHERE id = ?'),
-  list: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users ORDER BY created_at DESC')
+  list: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users ORDER BY created_at DESC'),
+  countAdmins: db.prepare('SELECT COUNT(*) as count FROM users WHERE role = "admin"'),
+  countOtherAdmins: db.prepare('SELECT COUNT(*) as count FROM users WHERE role = "admin" AND id != ?')
 };
 
 // Brand operations

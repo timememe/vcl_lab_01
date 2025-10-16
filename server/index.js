@@ -147,6 +147,55 @@ const normalizeSoraResponse = (data) => {
   };
 };
 
+const parseAssignedBrands = (value) => {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+  } catch (_error) {
+    return [];
+  }
+};
+
+const sanitizeUserRecord = (record) => ({
+  id: record.id,
+  username: record.username,
+  role: record.role,
+  assignedBrands: parseAssignedBrands(record.assigned_brands),
+  createdAt: record.created_at
+});
+
+const VALID_ROLES = new Set(['admin', 'user']);
+
+const normalizeAssignedBrandIds = (brandIds, availableBrandSet) => {
+  if (!Array.isArray(brandIds)) {
+    return [];
+  }
+
+  const unique = [];
+  const seen = new Set();
+
+  brandIds.forEach((value) => {
+    if (typeof value !== 'string') {
+      return;
+    }
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      return;
+    }
+    if (!availableBrandSet.has(trimmed)) {
+      throw new Error(`Unknown brand id: ${trimmed}`);
+    }
+    seen.add(trimmed);
+    unique.push(trimmed);
+  });
+
+  return unique;
+};
+
 const app = express();
 // In production, use Render's PORT. In development, use API_PORT or 4000
 const PORT = process.env.NODE_ENV === 'production'
@@ -182,7 +231,9 @@ app.post('/api/login', (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        assignedBrands: parseAssignedBrands(user.assigned_brands),
+        createdAt: user.created_at
       }
     });
   } catch (error) {
@@ -202,7 +253,9 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
     res.json({
       id: user.id,
       username: user.username,
-      role: user.role
+      role: user.role,
+      assignedBrands: parseAssignedBrands(user.assigned_brands),
+      createdAt: user.created_at
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -577,6 +630,181 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
     });
   } catch (error) {
     console.error('Get product error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Admin user management endpoints
+// ============================================================
+
+app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const users = userQueries.list.all();
+    res.json(users.map(sanitizeUserRecord));
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.post('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+  const { username, password, role = 'user', assignedBrandIds = [] } = req.body || {};
+
+  if (typeof username !== 'string' || !username.trim()) {
+    return res.status(400).json({ message: 'Username is required.' });
+  }
+
+  if (typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+  }
+
+  const normalizedRole = typeof role === 'string' ? role.trim() : 'user';
+  if (!VALID_ROLES.has(normalizedRole)) {
+    return res.status(400).json({ message: 'Invalid role specified.' });
+  }
+
+  try {
+    const existing = userQueries.findByUsername.get(username.trim());
+    if (existing) {
+      return res.status(409).json({ message: 'Username already exists.' });
+    }
+
+    const brands = brandQueries.findAll.all();
+    const availableBrandSet = new Set(brands.map((brand) => brand.id));
+    let normalizedBrands = [];
+    try {
+      normalizedBrands = normalizeAssignedBrandIds(assignedBrandIds, availableBrandSet);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError instanceof Error ? validationError.message : 'Invalid brand selection.' });
+    }
+
+    const passwordHash = bcrypt.hashSync(password, 10);
+    userQueries.create.run(
+      username.trim(),
+      passwordHash,
+      normalizedRole,
+      JSON.stringify(normalizedBrands)
+    );
+
+    const created = userQueries.findByUsername.get(username.trim());
+    res.status(201).json(sanitizeUserRecord(created));
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const userId = Number(req.params.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ message: 'Invalid user id.' });
+  }
+
+  const { username, password, role, assignedBrandIds } = req.body || {};
+
+  if (
+    typeof username !== 'undefined' &&
+    (typeof username !== 'string' || !username.trim())
+  ) {
+    return res.status(400).json({ message: 'Username cannot be empty.' });
+  }
+
+  if (
+    typeof password !== 'undefined' &&
+    (typeof password !== 'string' || password.length < 6)
+  ) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+  }
+
+  if (
+    typeof role !== 'undefined' &&
+    (typeof role !== 'string' || !VALID_ROLES.has(role.trim()))
+  ) {
+    return res.status(400).json({ message: 'Invalid role specified.' });
+  }
+
+  try {
+    const existing = userQueries.findById.get(userId);
+    if (!existing) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const normalizedUsername = typeof username === 'string' ? username.trim() : existing.username;
+    if (normalizedUsername !== existing.username) {
+      const duplicate = userQueries.findByUsername.get(normalizedUsername);
+      if (duplicate && duplicate.id !== userId) {
+        return res.status(409).json({ message: 'Username already exists.' });
+      }
+    }
+
+    const normalizedRole = typeof role === 'string' ? role.trim() : existing.role;
+
+    if (existing.role === 'admin' && normalizedRole !== 'admin') {
+      const adminCount = userQueries.countAdmins.get().count;
+      if (adminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot demote the last admin user.' });
+      }
+    }
+
+    let normalizedBrands = parseAssignedBrands(existing.assigned_brands);
+    if (typeof assignedBrandIds !== 'undefined') {
+      const brands = brandQueries.findAll.all();
+      const availableBrandSet = new Set(brands.map((brand) => brand.id));
+      try {
+        normalizedBrands = normalizeAssignedBrandIds(assignedBrandIds, availableBrandSet);
+      } catch (validationError) {
+        return res.status(400).json({ message: validationError instanceof Error ? validationError.message : 'Invalid brand selection.' });
+      }
+    }
+
+    userQueries.updateCore.run(
+      normalizedUsername,
+      normalizedRole,
+      JSON.stringify(normalizedBrands),
+      userId
+    );
+
+    if (typeof password === 'string' && password.length >= 6) {
+      const passwordHash = bcrypt.hashSync(password, 10);
+      userQueries.updatePassword.run(passwordHash, userId);
+    }
+
+    const updated = userQueries.findById.get(userId);
+    res.json(sanitizeUserRecord(updated));
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const userId = Number(req.params.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ message: 'Invalid user id.' });
+  }
+
+  if (userId === req.user.id) {
+    return res.status(400).json({ message: 'You cannot delete your own account.' });
+  }
+
+  try {
+    const existing = userQueries.findById.get(userId);
+    if (!existing) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (existing.role === 'admin') {
+      const adminCount = userQueries.countAdmins.get().count;
+      if (adminCount <= 1) {
+        return res.status(400).json({ message: 'Cannot delete the last admin user.' });
+      }
+    }
+
+    userQueries.delete.run(userId);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete user error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
