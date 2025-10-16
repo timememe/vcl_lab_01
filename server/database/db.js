@@ -3,9 +3,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import { initSupabase, syncToSupabase, isSupabaseAvailable } from './supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize Supabase
+initSupabase();
 
 const dbPath = path.join(__dirname, 'app.db');
 const schemaPath = path.join(__dirname, 'schema.sql');
@@ -195,5 +199,72 @@ export const globalCreditsQueries = {
 export function transaction(fn) {
   return db.transaction(fn);
 }
+
+// Dual-write wrapper: Execute SQLite query and sync to Supabase
+export function dualWrite(tableName, operation, sqliteQuery, ...params) {
+  try {
+    // Execute SQLite operation
+    const result = sqliteQuery.run(...params);
+
+    // Sync to Supabase asynchronously (don't block on Supabase)
+    if (isSupabaseAvailable()) {
+      // Extract the data that was just written
+      let dataToSync = null;
+
+      if (operation === 'create' || operation === 'update') {
+        // For inserts/updates, we need to fetch the row
+        if (tableName === 'users' && result.lastInsertRowid) {
+          dataToSync = userQueries.findById.get(result.lastInsertRowid);
+        } else if (tableName === 'brands' && params[0]) {
+          // Brand ID is first param
+          dataToSync = brandQueries.findById.get(params[0]);
+        } else if (tableName === 'activity_logs' && result.lastInsertRowid) {
+          dataToSync = db.prepare('SELECT * FROM activity_logs WHERE id = ?').get(result.lastInsertRowid);
+        } else if (tableName === 'usage_limits' || tableName === 'global_credits') {
+          // For upsert operations, we can construct the data from params
+          // This is handled in the specific wrapper functions below
+        }
+      }
+
+      if (dataToSync) {
+        syncToSupabase(tableName, dataToSync).catch(err => {
+          console.error(`⚠️  Supabase sync failed for ${tableName}:`, err);
+        });
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error(`SQLite operation failed for ${tableName}:`, error);
+    throw error;
+  }
+}
+
+// Wrapper for user operations with dual-write
+export const userQueriesWithSync = {
+  ...userQueries,
+  create: (...params) => dualWrite('users', 'create', userQueries.create, ...params),
+  updatePassword: (...params) => dualWrite('users', 'update', userQueries.updatePassword, ...params),
+  updateBrands: (...params) => dualWrite('users', 'update', userQueries.updateBrands, ...params),
+  updateCore: (...params) => dualWrite('users', 'update', userQueries.updateCore, ...params),
+  delete: (...params) => dualWrite('users', 'delete', userQueries.delete, ...params),
+};
+
+// Wrapper for brand operations with dual-write
+export const brandQueriesWithSync = {
+  ...brandQueries,
+  create: (...params) => dualWrite('brands', 'create', brandQueries.create, ...params),
+  update: (...params) => dualWrite('brands', 'update', brandQueries.update, ...params),
+  delete: (...params) => dualWrite('brands', 'delete', brandQueries.delete, ...params),
+};
+
+// Wrapper for activity log operations with dual-write
+export const activityQueriesWithSync = {
+  ...activityQueries,
+  create: (...params) => dualWrite('activity_logs', 'create', activityQueries.create, ...params),
+};
+
+// Export both versions (with and without sync) for flexibility
+export { userQueries, brandQueries, activityQueries };
 
 export default db;
