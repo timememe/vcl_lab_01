@@ -15,6 +15,16 @@ import {
   getTodayDate,
   transaction
 } from './database/db.js';
+import {
+  findUserByUsername,
+  findUserById,
+  createUser,
+  updateUserCore,
+  updateUserPassword,
+  deleteUser,
+  listUsers,
+  countAdmins
+} from './database/user-service.js';
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -363,7 +373,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Authentication endpoints
 // ============================================================
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};
 
   if (!username || !password) {
@@ -371,7 +381,7 @@ app.post('/api/login', (req, res) => {
   }
 
   try {
-    const user = userQueries.findByUsername.get(username);
+    const user = await findUserByUsername(username);
 
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       return res.status(401).json({ message: 'Invalid credentials.' });
@@ -395,9 +405,9 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-app.get('/api/auth/me', authMiddleware, (req, res) => {
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
-    const user = userQueries.findById.get(req.user.id);
+    const user = await findUserById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -692,9 +702,9 @@ app.get('/api/activity/user/:userId', authMiddleware, (req, res) => {
 // Brand endpoints
 // ============================================================
 
-app.get('/api/brands', authMiddleware, (req, res) => {
+app.get('/api/brands', authMiddleware, async (req, res) => {
   try {
-    const user = userQueries.findById.get(req.user.id);
+    const user = await findUserById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -722,7 +732,7 @@ app.get('/api/brands', authMiddleware, (req, res) => {
   }
 });
 
-app.get('/api/brands/:brandId', authMiddleware, (req, res) => {
+app.get('/api/brands/:brandId', authMiddleware, async (req, res) => {
   try {
     const { brandId } = req.params;
     const brand = brandQueries.findById.get(brandId);
@@ -732,7 +742,11 @@ app.get('/api/brands/:brandId', authMiddleware, (req, res) => {
     }
 
     // Check if user has access to this brand
-    const user = userQueries.findById.get(req.user.id);
+    const user = await findUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const assignedBrandIds = user.assigned_brands ? JSON.parse(user.assigned_brands) : [];
 
     if (req.user.role !== 'admin' && !assignedBrandIds.includes(brandId)) {
@@ -749,7 +763,7 @@ app.get('/api/brands/:brandId', authMiddleware, (req, res) => {
   }
 });
 
-app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) => {
+app.get('/api/brands/:brandId/products/:productId', authMiddleware, async (req, res) => {
   try {
     const { brandId, productId } = req.params;
     const brand = brandQueries.findById.get(brandId);
@@ -759,7 +773,11 @@ app.get('/api/brands/:brandId/products/:productId', authMiddleware, (req, res) =
     }
 
     // Check access
-    const user = userQueries.findById.get(req.user.id);
+    const user = await findUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const assignedBrandIds = user.assigned_brands ? JSON.parse(user.assigned_brands) : [];
 
     if (req.user.role !== 'admin' && !assignedBrandIds.includes(brandId)) {
@@ -1177,9 +1195,9 @@ app.delete('/api/admin/brands/:brandId/products/:productId', authMiddleware, adm
 // Admin user management endpoints
 // ============================================================
 
-app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const users = userQueries.list.all();
+    const users = await listUsers();
     res.json(users.map(sanitizeUserRecord));
   } catch (error) {
     console.error('List users error:', error);
@@ -1187,7 +1205,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   }
 });
 
-app.post('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
+app.post('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
   const { username, password, role = 'user', assignedBrandIds = [] } = req.body || {};
 
   if (typeof username !== 'string' || !username.trim()) {
@@ -1204,7 +1222,7 @@ app.post('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   }
 
   try {
-    const existing = userQueries.findByUsername.get(username.trim());
+    const existing = await findUserByUsername(username.trim());
     if (existing) {
       return res.status(409).json({ message: 'Username already exists.' });
     }
@@ -1219,14 +1237,13 @@ app.post('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
     }
 
     const passwordHash = bcrypt.hashSync(password, 10);
-    userQueries.create.run(
+    const created = await createUser(
       username.trim(),
       passwordHash,
       normalizedRole,
       JSON.stringify(normalizedBrands)
     );
 
-    const created = userQueries.findByUsername.get(username.trim());
     res.status(201).json(sanitizeUserRecord(created));
   } catch (error) {
     console.error('Create user error:', error);
@@ -1234,7 +1251,7 @@ app.post('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const userId = Number(req.params.id);
   if (!Number.isInteger(userId) || userId <= 0) {
     return res.status(400).json({ message: 'Invalid user id.' });
@@ -1264,14 +1281,14 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
   }
 
   try {
-    const existing = userQueries.findById.get(userId);
+    const existing = await findUserById(userId);
     if (!existing) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
     const normalizedUsername = typeof username === 'string' ? username.trim() : existing.username;
     if (normalizedUsername !== existing.username) {
-      const duplicate = userQueries.findByUsername.get(normalizedUsername);
+      const duplicate = await findUserByUsername(normalizedUsername);
       if (duplicate && duplicate.id !== userId) {
         return res.status(409).json({ message: 'Username already exists.' });
       }
@@ -1280,8 +1297,8 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
     const normalizedRole = typeof role === 'string' ? role.trim() : existing.role;
 
     if (existing.role === 'admin' && normalizedRole !== 'admin') {
-      const adminCount = userQueries.countAdmins.get().count;
-      if (adminCount <= 1) {
+      const adminCountResult = await countAdmins();
+      if (adminCountResult.count <= 1) {
         return res.status(400).json({ message: 'Cannot demote the last admin user.' });
       }
     }
@@ -1297,7 +1314,7 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
       }
     }
 
-    userQueries.updateCore.run(
+    await updateUserCore(
       normalizedUsername,
       normalizedRole,
       JSON.stringify(normalizedBrands),
@@ -1306,10 +1323,10 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
 
     if (typeof password === 'string' && password.length >= 6) {
       const passwordHash = bcrypt.hashSync(password, 10);
-      userQueries.updatePassword.run(passwordHash, userId);
+      await updateUserPassword(passwordHash, userId);
     }
 
-    const updated = userQueries.findById.get(userId);
+    const updated = await findUserById(userId);
     res.json(sanitizeUserRecord(updated));
   } catch (error) {
     console.error('Update user error:', error);
@@ -1317,7 +1334,7 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
   }
 });
 
-app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const userId = Number(req.params.id);
   if (!Number.isInteger(userId) || userId <= 0) {
     return res.status(400).json({ message: 'Invalid user id.' });
@@ -1328,19 +1345,19 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) =
   }
 
   try {
-    const existing = userQueries.findById.get(userId);
+    const existing = await findUserById(userId);
     if (!existing) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
     if (existing.role === 'admin') {
-      const adminCount = userQueries.countAdmins.get().count;
-      if (adminCount <= 1) {
+      const adminCountResult = await countAdmins();
+      if (adminCountResult.count <= 1) {
         return res.status(400).json({ message: 'Cannot delete the last admin user.' });
       }
     }
 
-    userQueries.delete.run(userId);
+    await deleteUser(userId);
     res.status(204).send();
   } catch (error) {
     console.error('Delete user error:', error);
