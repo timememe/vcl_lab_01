@@ -98,12 +98,21 @@ After deployment:
    - SQLite (if you have local access)
    - Supabase Table Editor
 
-## Current Behavior (Dual-Write Mode)
+## Current Behavior (Supabase-First Mode)
 
-Your app now operates in **dual-write mode**:
+✅ **Authentication migration completed!** Your app now operates in **Supabase-first mode**:
 
-- ✅ **Reads**: From SQLite (fast, local)
+### User Authentication (✅ Migrated)
+- ✅ **Reads**: From Supabase (primary) → SQLite (fallback)
+- ✅ **Writes**: To SQLite (sync) → Supabase (async)
+- ✅ **All endpoints updated**: Login, /auth/me, admin user management, brand access
+- ✅ **Service layer**: Unified `user-service.js` handles all user operations
+
+### Other Data (Brands, Activity, Usage)
+- ⏳ **Reads**: From SQLite (fast, local)
 - ✅ **Writes**: To SQLite (primary) → Supabase (async backup)
+
+### Resilience
 - ✅ **Supabase fails**: App continues normally with SQLite
 - ✅ **SQLite only**: If Supabase credentials missing
 
@@ -111,6 +120,7 @@ This ensures:
 - Zero downtime during migration
 - Data consistency
 - Fallback if Supabase has issues
+- Improved scalability for user authentication
 
 ## Monitoring Sync Status
 
@@ -124,15 +134,33 @@ Check server logs for Supabase sync status:
 
 Sync failures are **non-critical** - the app will continue using SQLite.
 
-## Step 6: Switch to Supabase Only (Future)
+## ✅ Step 6: Authentication Switched to Supabase (COMPLETED)
 
-Once you're confident Supabase is working:
+**Status:** Authentication now reads from Supabase first, with SQLite as fallback!
 
-1. Update `server/database/db.js` to read from Supabase
-2. Keep SQLite for local development only
-3. Update queries to use Supabase client directly
+**What was changed:**
+1. ✅ Created `server/database/user-service.js` - unified user operations layer
+2. ✅ Updated all authentication endpoints to use async Supabase queries
+3. ✅ Updated admin user management (create, update, delete, list)
+4. ✅ Updated brand access control to check user permissions from Supabase
+5. ✅ Maintained dual-write pattern for data consistency
 
-This will be done in a future update.
+**Endpoints migrated:**
+- `POST /api/login` - now queries Supabase for user authentication
+- `GET /api/auth/me` - fetches user from Supabase
+- `GET /api/admin/users` - lists users from Supabase
+- `POST /api/admin/users` - creates user in both databases
+- `PUT /api/admin/users/:id` - updates user in both databases
+- `DELETE /api/admin/users/:id` - deletes from both databases
+- `GET /api/brands` - checks user access from Supabase
+- `GET /api/brands/:brandId` - validates brand access from Supabase
+- `GET /api/brands/:brandId/products/:productId` - validates from Supabase
+
+**Next steps (optional):**
+- Migrate brand queries to Supabase-first
+- Migrate activity logs to Supabase-first
+- Migrate usage tracking to Supabase-first
+- Eventually phase out SQLite for reads (keep for local dev)
 
 ## Troubleshooting
 

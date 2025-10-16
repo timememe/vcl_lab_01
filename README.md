@@ -15,7 +15,10 @@ Professional AI-powered image generation tool with support for multiple AI model
 - **Activity Logging**: Full audit trail of all user actions
 
 ### **Database & Persistence**
-- **SQLite Database**: ACID-compliant local database
+- **Hybrid Database**: Supabase PostgreSQL (primary) + SQLite (fallback)
+- **Dual-Write Architecture**: All writes go to both databases asynchronously
+- **Read Strategy**: Supabase-first with automatic SQLite fallback
+- **Zero Downtime**: Graceful degradation if Supabase unavailable
 - **Usage Tracking**: Per-category and global daily limits
 - **Activity Logs**: Track all generations with user, model, and metadata
 - **Automatic Reset**: Daily usage counters reset automatically
@@ -81,9 +84,14 @@ JWT_SECRET=your-secret-key-change-in-production
 # API Server Port
 API_PORT=4000
 
-# AI API Keys (optional, can be set on frontend)
+# AI API Keys (required for AI generation)
 GEMINI_API_KEY=your_gemini_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Supabase Configuration (optional, fallback to SQLite if not set)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your_service_role_key_here
+SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
 ---
@@ -101,9 +109,11 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 **Backend:**
 - Express.js
-- SQLite (better-sqlite3)
+- Supabase PostgreSQL (primary database)
+- SQLite (better-sqlite3, local fallback)
 - JWT (jsonwebtoken)
 - bcrypt for password hashing
+- @supabase/supabase-js client
 
 **AI Integration:**
 - Google Gemini API
@@ -115,8 +125,13 @@ OPENAI_API_KEY=your_openai_api_key_here
 vcl_lab_01/
 ├── server/                      # Backend API
 │   ├── database/
-│   │   ├── schema.sql          # Database schema
-│   │   ├── db.js               # Database service layer
+│   │   ├── schema.sql          # SQLite schema
+│   │   ├── supabase-migration.sql # Supabase PostgreSQL schema
+│   │   ├── db.js               # SQLite queries & dual-write
+│   │   ├── supabase.js         # Supabase client wrapper
+│   │   ├── user-service.js     # Unified user operations (Supabase-first)
+│   │   ├── migrate-to-supabase.js # One-time data migration script
+│   │   ├── brands-data.json    # Brand seed data
 │   │   └── app.db              # SQLite database (gitignored)
 │   ├── middleware/
 │   │   └── auth.js             # JWT authentication middleware
@@ -176,23 +191,47 @@ vcl_lab_01/
 └── presets.ts                   # AI generation presets
 ```
 
-### Database Schema
+### Database Architecture
 
-**Tables:**
+**Hybrid Dual-Database System:**
 
-1. **users** - User accounts
-   - `id`, `username`, `password_hash`, `role`, `created_at`, `updated_at`
+**Primary Database: Supabase PostgreSQL**
+- Persistent storage (survives Render restarts)
+- Scalable for concurrent users
+- Remote access via REST API
+- JSONB for complex data types
 
-2. **activity_logs** - Activity audit trail
+**Fallback Database: SQLite**
+- Local file-based storage
+- Fast synchronous operations
+- Development-friendly
+- Automatic schema creation
+
+**Data Flow:**
+1. **Reads**: Supabase → SQLite (fallback)
+2. **Writes**: SQLite (sync) → Supabase (async)
+3. **Migration**: Automatic data sync on startup
+
+**Tables (identical schema in both databases):**
+
+1. **users** - User accounts with brand assignments
+   - `id`, `username`, `password_hash`, `role`, `assigned_brands`, `created_at`, `updated_at`
+
+2. **brands** - Brand catalog
+   - `id`, `name`, `logo`, `description`, `products` (JSON), `created_at`, `updated_at`
+
+3. **activity_logs** - Activity audit trail
    - `id`, `user_id`, `category_id`, `action`, `ai_model`, `credits_used`, `metadata`, `created_at`
 
-3. **usage_limits** - Per-category daily limits
+4. **usage_limits** - Per-category daily limits
    - `id`, `date`, `user_id`, `category_id`, `daily_limit`, `used`, `created_at`, `updated_at`
 
-4. **global_credits** - Global daily limits
+5. **global_credits** - Global daily limits
    - `id`, `date`, `daily_limit`, `used`, `created_at`, `updated_at`
 
-**Location:** `server/database/app.db`
+**Locations:**
+- Supabase: `https://your-project.supabase.co`
+- SQLite: `server/database/app.db`
 
 ---
 
@@ -523,5 +562,14 @@ Same as main project
 
 ---
 
-**Last Updated:** 2025-10-02
-**Version:** 1.0.0 with SQLite + JWT
+## 📖 Documentation
+
+- **[README.md](./README.md)** - This file (quick start, features, deployment)
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Detailed system architecture and design
+- **[SUPABASE_MIGRATION.md](./SUPABASE_MIGRATION.md)** - Database migration guide
+- **[DEPLOY.md](./DEPLOY.md)** - Deployment instructions for Render
+
+---
+
+**Last Updated:** 2025-10-16
+**Version:** 2.0.0 with Supabase + SQLite Hybrid Architecture
