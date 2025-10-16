@@ -104,8 +104,8 @@ export const userQueries = {
   `),
   delete: db.prepare('DELETE FROM users WHERE id = ?'),
   list: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users ORDER BY created_at DESC'),
-  countAdmins: db.prepare('SELECT COUNT(*) as count FROM users WHERE role = "admin"'),
-  countOtherAdmins: db.prepare('SELECT COUNT(*) as count FROM users WHERE role = "admin" AND id != ?')
+  countAdmins: db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'"),
+  countOtherAdmins: db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND id != ?")
 };
 
 // Brand operations
