@@ -1349,6 +1349,162 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) =
 });
 
 
+// ============================================================
+// AI Generation endpoints (Gemini & OpenAI)
+// ============================================================
+
+app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
+  const { parts, aspectRatio } = req.body || {};
+
+  if (!parts || !Array.isArray(parts)) {
+    return res.status(400).json({ message: 'Parts array is required.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    const { GoogleGenAI, Modality } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+
+    const contents = { parts };
+    const config = {
+      responseModalities: [Modality.IMAGE, Modality.TEXT],
+      ...(aspectRatio && { imageConfig: { aspectRatio } })
+    };
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents,
+      config
+    });
+
+    // Extract image from response
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return res.json({
+          image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
+        });
+      }
+    }
+
+    // Check for safety ratings
+    const candidate = response.candidates[0];
+    if (candidate.finishReason !== 'STOP' && candidate.safetyRatings) {
+      const blockedRating = candidate.safetyRatings.find(rating => rating.blocked);
+      if (blockedRating) {
+        console.warn('Gemini generation blocked due to safety settings:', blockedRating.category);
+        return res.status(400).json({
+          message: `Image generation blocked due to safety settings: ${blockedRating.category}`
+        });
+      }
+    }
+
+    return res.status(500).json({ message: 'API did not return an image.' });
+  } catch (error) {
+    console.error('Gemini generation error:', error);
+    res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+});
+
+app.post('/api/openai/generate', authMiddleware, async (req, res) => {
+  const { prompt, imageBase64, mode = 'edit' } = req.body || {};
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ message: 'Prompt is required.' });
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'OPENAI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    let response;
+
+    if (mode === 'edit' && imageBase64) {
+      // Image editing mode
+      const parsed = parseBase64ImagePayload(imageBase64);
+      if (!parsed) {
+        return res.status(400).json({ message: 'Invalid image data.' });
+      }
+
+      const formData = new FormData();
+      const blob = new Blob([parsed.buffer], { type: 'image/png' });
+      formData.append('image', blob, 'image.png');
+      formData.append('prompt', prompt);
+      formData.append('model', 'gpt-image-1');
+      formData.append('n', '1');
+      formData.append('size', '1024x1024');
+
+      response = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: formData
+      });
+    } else {
+      // Text-to-image mode
+      response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-image-1',
+          prompt,
+          n: 1,
+          size: '1024x1024'
+        })
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', errorText);
+      let errorMessage = 'Failed to generate image';
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.error?.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch (_) {}
+      return res.status(response.status).json({ message: errorMessage });
+    }
+
+    const data = await response.json();
+
+    if (!data.data || data.data.length === 0) {
+      return res.status(500).json({ message: 'OpenAI API did not return any images.' });
+    }
+
+    // Return the first image (URL or base64)
+    const imageData = data.data[0];
+    if (imageData.url) {
+      // Download and convert to base64
+      const imageResponse = await fetch(imageData.url);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64 = Buffer.from(imageBuffer).toString('base64');
+      return res.json({ image: `data:image/png;base64,${base64}` });
+    } else if (imageData.b64_json) {
+      return res.json({ image: `data:image/png;base64,${imageData.b64_json}` });
+    }
+
+    return res.status(500).json({ message: 'No image data found in response.' });
+  } catch (error) {
+    console.error('OpenAI generation error:', error);
+    res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Sora video generation endpoints
+// ============================================================
+
 app.post('/api/sora/generate', authMiddleware, adminMiddleware, async (req, res) => {
   const { prompt, imageBase64, imageName, size, seconds } = req.body || {};
 
