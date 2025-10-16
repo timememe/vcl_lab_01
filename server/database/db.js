@@ -264,7 +264,4 @@ export const activityQueriesWithSync = {
   create: (...params) => dualWrite('activity_logs', 'create', activityQueries.create, ...params),
 };
 
-// Export both versions (with and without sync) for flexibility
-export { userQueries, brandQueries, activityQueries };
-
 export default db;
