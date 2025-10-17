@@ -86,17 +86,18 @@ export async function updateUserCore(username, role, assignedBrands, dailyCredit
   // Write to SQLite (primary)
   userQueries.updateCore.run(username, role, assignedBrands, dailyCreditLimit, userId);
 
-  // Get the updated user
-  const user = userQueries.findById.get(userId);
+  // Get the updated user with password hash for Supabase sync
+  const userWithPassword = userQueries.findByUsername.get(username);
 
-  // Sync to Supabase asynchronously
-  if (isSupabaseAvailable() && user) {
-    syncToSupabase('users', user).catch(err => {
+  // Sync to Supabase asynchronously (includes password_hash)
+  if (isSupabaseAvailable() && userWithPassword) {
+    syncToSupabase('users', userWithPassword).catch(err => {
       console.error('⚠️  Failed to sync updated user to Supabase:', err);
     });
   }
 
-  return user;
+  // Return user without password for API response
+  return userQueries.findById.get(userId);
 }
 
 // Update password with dual-write
