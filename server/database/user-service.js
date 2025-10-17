@@ -67,17 +67,18 @@ export async function createUser(username, passwordHash, role, assignedBrands) {
   // Write to SQLite (primary)
   const result = userQueries.create.run(username, passwordHash, role, assignedBrands);
 
-  // Get the created user
-  const user = userQueries.findById.get(result.lastInsertRowid);
+  // Get the created user with password hash for Supabase sync
+  const user = userQueries.findByUsername.get(username);
 
-  // Sync to Supabase asynchronously
+  // Sync to Supabase asynchronously (includes password_hash)
   if (isSupabaseAvailable() && user) {
     syncToSupabase('users', user).catch(err => {
       console.error('⚠️  Failed to sync new user to Supabase:', err);
     });
   }
 
-  return user;
+  // Return user without password for API response
+  return userQueries.findById.get(result.lastInsertRowid);
 }
 
 // Update user with dual-write
