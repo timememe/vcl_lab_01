@@ -144,6 +144,31 @@ export const activityQueries = {
     LEFT JOIN users u ON al.user_id = u.id
     ORDER BY al.created_at DESC
     LIMIT ?
+  `),
+  getUserStatsByDate: db.prepare(`
+    SELECT
+      u.id as user_id,
+      u.username,
+      u.role,
+      COUNT(al.id) as total_requests,
+      SUM(al.credits_used) as total_credits,
+      MAX(al.created_at) as last_activity
+    FROM users u
+    LEFT JOIN activity_logs al ON u.id = al.user_id
+      AND DATE(al.created_at) = ?
+    GROUP BY u.id, u.username, u.role
+    ORDER BY total_credits DESC, u.username ASC
+  `),
+  getCategoryStatsByDate: db.prepare(`
+    SELECT
+      category_id,
+      COUNT(*) as total_requests,
+      SUM(credits_used) as total_credits,
+      COUNT(DISTINCT user_id) as unique_users
+    FROM activity_logs
+    WHERE DATE(created_at) = ?
+    GROUP BY category_id
+    ORDER BY total_credits DESC
   `)
 };
 

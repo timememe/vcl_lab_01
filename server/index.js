@@ -542,14 +542,36 @@ app.post('/api/usage/increment', authMiddleware, (req, res) => {
     const today = getTodayDate();
     const userId = req.user.id;
 
+    console.log(`📊 Usage increment request:`, {
+      user: req.user.username,
+      userId,
+      category: categoryId,
+      credits: increment,
+      model: aiModel || 'unknown',
+      date: today
+    });
+
     const result = transaction(() => {
       // Check and increment category limit
       const categoryLimit = usageLimitQueries.get.get(today, categoryId);
-      if (categoryLimit && categoryLimit.daily_limit > 0) {
-        const tentativeUsed = categoryLimit.used + increment;
-        if (tentativeUsed > categoryLimit.daily_limit) {
-          throw new Error('Category limit exceeded');
+
+      if (categoryLimit) {
+        console.log(`   Category limit check (${categoryId}):`, {
+          limit: categoryLimit.daily_limit,
+          used: categoryLimit.used,
+          requesting: increment,
+          willBe: categoryLimit.used + increment
+        });
+
+        if (categoryLimit.daily_limit > 0) {
+          const tentativeUsed = categoryLimit.used + increment;
+          if (tentativeUsed > categoryLimit.daily_limit) {
+            console.log(`   ❌ REJECTED: Category limit would be exceeded!`);
+            throw new Error('Category limit exceeded');
+          }
         }
+      } else {
+        console.log(`   ℹ️  No category limit set for ${categoryId}`);
       }
 
       // Check and increment global credits
@@ -559,9 +581,17 @@ app.post('/api/usage/increment', authMiddleware, (req, res) => {
         globalCredits = globalCreditsQueries.get.get(today);
       }
 
+      console.log(`   Global credits check:`, {
+        limit: globalCredits.daily_limit,
+        used: globalCredits.used,
+        requesting: increment,
+        willBe: globalCredits.used + increment
+      });
+
       if (globalCredits.daily_limit > 0) {
         const tentativeCreditsUsed = globalCredits.used + increment;
         if (tentativeCreditsUsed > globalCredits.daily_limit) {
+          console.log(`   ❌ REJECTED: Global credits limit would be exceeded!`);
           throw new Error('Daily credits limit exceeded');
         }
       }
@@ -583,6 +613,11 @@ app.post('/api/usage/increment', authMiddleware, (req, res) => {
       // Get updated data
       const updatedCategory = usageLimitQueries.get.get(today, categoryId);
       const updatedGlobal = globalCreditsQueries.get.get(today);
+
+      console.log(`   ✅ APPROVED: Usage incremented successfully`, {
+        category: `${updatedCategory?.used || 0}/${updatedCategory?.daily_limit || 0}`,
+        global: `${updatedGlobal.used}/${updatedGlobal.daily_limit}`
+      });
 
       return {
         category: updatedCategory,
@@ -610,6 +645,7 @@ app.post('/api/usage/increment', authMiddleware, (req, res) => {
     });
   } catch (error) {
     if (error.message.includes('limit exceeded')) {
+      console.log(`   ⛔ Usage increment BLOCKED: ${error.message}`);
       return res.status(429).json({ message: error.message });
     }
     console.error('Increment usage error:', error);
@@ -694,6 +730,74 @@ app.get('/api/activity/user/:userId', authMiddleware, (req, res) => {
     })));
   } catch (error) {
     console.error('Get user activity error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get detailed usage statistics (admin only)
+app.get('/api/admin/usage/stats', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const date = req.query.date || getTodayDate();
+
+    console.log(`📈 Admin usage stats request for date: ${date}`);
+
+    // Get per-user statistics
+    const userStats = activityQueries.getUserStatsByDate.all(date);
+
+    // Get per-category statistics
+    const categoryStats = activityQueries.getCategoryStatsByDate.all(date);
+
+    // Get current limits
+    const globalCredits = globalCreditsQueries.get.get(date) || { daily_limit: 100, used: 0 };
+    const categoryLimits = usageLimitQueries.getAllForDate.all(date);
+
+    const limitsMap = {};
+    categoryLimits.forEach(limit => {
+      limitsMap[limit.category_id] = {
+        dailyLimit: limit.daily_limit,
+        used: limit.used
+      };
+    });
+
+    // Format user stats
+    const formattedUserStats = userStats.map(stat => ({
+      userId: stat.user_id,
+      username: stat.username,
+      role: stat.role,
+      totalRequests: stat.total_requests || 0,
+      totalCredits: stat.total_credits || 0,
+      lastActivity: stat.last_activity
+    }));
+
+    // Format category stats
+    const formattedCategoryStats = categoryStats.map(stat => ({
+      categoryId: stat.category_id,
+      totalRequests: stat.total_requests,
+      totalCredits: stat.total_credits,
+      uniqueUsers: stat.unique_users,
+      limit: limitsMap[stat.category_id] || { dailyLimit: 0, used: 0 }
+    }));
+
+    console.log(`   📊 Stats summary:`, {
+      date,
+      totalUsers: formattedUserStats.length,
+      activeUsers: formattedUserStats.filter(u => u.totalRequests > 0).length,
+      totalCategories: formattedCategoryStats.length,
+      globalCreditsUsed: `${globalCredits.used}/${globalCredits.daily_limit}`
+    });
+
+    res.json({
+      date,
+      userStats: formattedUserStats,
+      categoryStats: formattedCategoryStats,
+      globalLimits: {
+        dailyLimit: globalCredits.daily_limit,
+        used: globalCredits.used,
+        remaining: Math.max(0, globalCredits.daily_limit - globalCredits.used)
+      }
+    });
+  } catch (error) {
+    console.error('Get usage stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
