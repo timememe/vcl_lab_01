@@ -270,7 +270,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
     } finally {
       setLoading(false);
     }
-  }, [onUsageUpdated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     void loadUsage();
