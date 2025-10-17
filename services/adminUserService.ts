@@ -12,7 +12,8 @@ export const adminUserService = {
       username: payload.username,
       password: payload.password,
       role: payload.role,
-      assignedBrandIds: payload.assignedBrandIds
+      assignedBrandIds: payload.assignedBrandIds,
+      dailyCreditLimit: payload.dailyCreditLimit ?? 0
     });
 
     const created = await apiFetch('/api/admin/users', {
@@ -40,6 +41,10 @@ export const adminUserService = {
 
     if (Array.isArray(payload.assignedBrandIds)) {
       updatePayload.assignedBrandIds = payload.assignedBrandIds;
+    }
+
+    if (typeof payload.dailyCreditLimit === 'number') {
+      updatePayload.dailyCreditLimit = payload.dailyCreditLimit;
     }
 
     const updated = await apiFetch(`/api/admin/users/${userId}`, {
