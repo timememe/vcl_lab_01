@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     assigned_brands JSONB, -- JSON array of brand IDs (using JSONB for better performance)
+    daily_credit_limit INTEGER DEFAULT 0, -- Per-user daily credit limit (0 = no limit)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -142,3 +143,7 @@ CREATE TRIGGER update_global_credits_updated_at BEFORE UPDATE ON global_credits
 
 CREATE TRIGGER update_brands_updated_at BEFORE UPDATE ON brands
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Migration: Add daily_credit_limit to existing users table
+-- Run this if table already exists without this column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER DEFAULT 0;

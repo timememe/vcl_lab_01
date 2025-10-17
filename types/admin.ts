@@ -3,15 +3,16 @@ import type { Brand, Product } from '../types';
 
 export interface AdminUser extends User {
   assignedBrands: string[];
+  dailyCreditLimit?: number;
   createdAt?: string;
 }
 
 export interface AdminUserPayload {
   username: string;
   password?: string;
-
   role: 'admin' | 'user';
   assignedBrandIds: string[];
+  dailyCreditLimit?: number;
 }
 
 export interface AdminBrand extends Brand {

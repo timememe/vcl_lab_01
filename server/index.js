@@ -328,6 +328,7 @@ const sanitizeUserRecord = (record) => ({
   username: record.username,
   role: record.role,
   assignedBrands: parseAssignedBrands(record.assigned_brands),
+  dailyCreditLimit: record.daily_credit_limit || 0,
   createdAt: record.created_at
 });
 
@@ -1310,7 +1311,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) =>
 });
 
 app.post('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
-  const { username, password, role = 'user', assignedBrandIds = [] } = req.body || {};
+  const { username, password, role = 'user', assignedBrandIds = [], dailyCreditLimit = 0 } = req.body || {};
 
   if (typeof username !== 'string' || !username.trim()) {
     return res.status(400).json({ message: 'Username is required.' });
@@ -1323,6 +1324,11 @@ app.post('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) =
   const normalizedRole = typeof role === 'string' ? role.trim() : 'user';
   if (!VALID_ROLES.has(normalizedRole)) {
     return res.status(400).json({ message: 'Invalid role specified.' });
+  }
+
+  const normalizedLimit = Number(dailyCreditLimit);
+  if (!Number.isFinite(normalizedLimit) || normalizedLimit < 0) {
+    return res.status(400).json({ message: 'Daily credit limit must be a non-negative number.' });
   }
 
   try {
@@ -1345,7 +1351,8 @@ app.post('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) =
       username.trim(),
       passwordHash,
       normalizedRole,
-      JSON.stringify(normalizedBrands)
+      JSON.stringify(normalizedBrands),
+      normalizedLimit
     );
 
     res.status(201).json(sanitizeUserRecord(created));
@@ -1361,7 +1368,7 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res
     return res.status(400).json({ message: 'Invalid user id.' });
   }
 
-  const { username, password, role, assignedBrandIds } = req.body || {};
+  const { username, password, role, assignedBrandIds, dailyCreditLimit } = req.body || {};
 
   if (
     typeof username !== 'undefined' &&
@@ -1382,6 +1389,13 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res
     (typeof role !== 'string' || !VALID_ROLES.has(role.trim()))
   ) {
     return res.status(400).json({ message: 'Invalid role specified.' });
+  }
+
+  if (typeof dailyCreditLimit !== 'undefined') {
+    const limitValue = Number(dailyCreditLimit);
+    if (!Number.isFinite(limitValue) || limitValue < 0) {
+      return res.status(400).json({ message: 'Daily credit limit must be a non-negative number.' });
+    }
   }
 
   try {
@@ -1418,10 +1432,15 @@ app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res
       }
     }
 
+    const normalizedLimit = typeof dailyCreditLimit !== 'undefined'
+      ? Number(dailyCreditLimit)
+      : (existing.daily_credit_limit || 0);
+
     await updateUserCore(
       normalizedUsername,
       normalizedRole,
       JSON.stringify(normalizedBrands),
+      normalizedLimit,
       userId
     );
 

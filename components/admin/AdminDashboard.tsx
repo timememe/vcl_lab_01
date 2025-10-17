@@ -24,6 +24,7 @@ interface UserFormState {
   password: string;
   role: 'admin' | 'user';
   assignedBrandIds: string[];
+  dailyCreditLimit: string;
 }
 
 const getCategoryIds = (record?: UsageRecord | null): string[] => {
@@ -64,7 +65,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
     username: '',
     password: '',
     role: 'user',
-    assignedBrandIds: []
+    assignedBrandIds: [],
+    dailyCreditLimit: '0'
   });
 
   const unlimitedLabel = translate('admin_limit_unlimited', 'Unlimited');
@@ -75,7 +77,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
       username: '',
       password: '',
       role: 'user',
-      assignedBrandIds: []
+      assignedBrandIds: [],
+      dailyCreditLimit: '0'
     });
   }, []);
 
@@ -128,7 +131,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
       username: user.username,
       password: '',
       role: user.role,
-      assignedBrandIds: user.assignedBrands ?? []
+      assignedBrandIds: user.assignedBrands ?? [],
+      dailyCreditLimit: String(user.dailyCreditLimit ?? 0)
     });
     setUserError(null);
     setUserSuccess(null);
@@ -185,13 +189,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
     setUserError(null);
     setUserSuccess(null);
 
+    const creditLimit = Number(userForm.dailyCreditLimit);
+    if (!Number.isFinite(creditLimit) || creditLimit < 0) {
+      setUserError(translate('admin_user_invalid_credit_limit', 'Credit limit must be a non-negative number'));
+      return;
+    }
+
     try {
       if (!editingUserId) {
         const created = await adminUserService.createUser({
           username: trimmedUsername,
           password: userForm.password,
           role: userForm.role,
-          assignedBrandIds: userForm.assignedBrandIds
+          assignedBrandIds: userForm.assignedBrandIds,
+          dailyCreditLimit: creditLimit
         });
         setUsers((prev) => [created, ...prev]);
         setUserSuccess(translate('admin_user_created', 'User created successfully'));
@@ -200,7 +211,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
         const payload: Partial<AdminUserPayload> & { password?: string } = {
           username: trimmedUsername,
           role: userForm.role,
-          assignedBrandIds: userForm.assignedBrandIds
+          assignedBrandIds: userForm.assignedBrandIds,
+          dailyCreditLimit: creditLimit
         };
 
         if (userForm.password.trim()) {
@@ -587,35 +599,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                {translate('admin_user_brands_label', 'Brand access')}
+                {translate('admin_user_credit_limit_label', 'Daily credit limit')}
               </label>
-              {brandsLoading && (
-                <p className="text-sm text-gray-500">
-                  {translate('admin_user_brands_loading', 'Loading brands...')}
-                </p>
-              )}
-              {!brandsLoading && brandOptions.length === 0 && (
-                <p className="text-sm text-gray-500">
-                  {translate('admin_user_no_brands_available', 'No brands configured yet')}
-                </p>
-              )}
-              {!brandsLoading && brandOptions.length > 0 && (
-                <div className="grid sm:grid-cols-2 gap-2 pt-1">
-                  {brandOptions.map((brand) => (
-                    <label key={brand.id} className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        checked={userForm.assignedBrandIds.includes(brand.id)}
-                        onChange={() => toggleBrandSelection(brand.id)}
-                        disabled={userActionLoading}
-                      />
-                      <span>{brand.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              <input
+                type="text"
+                value={userForm.dailyCreditLimit}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setUserForm((prev) => ({ ...prev, dailyCreditLimit: value }));
+                  }
+                }}
+                className="w-full border border-red-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+                placeholder="0 = unlimited"
+                disabled={userActionLoading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {translate('admin_user_credit_limit_hint', '0 = unlimited, otherwise max credits per day')}
+              </p>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              {translate('admin_user_brands_label', 'Brand access')}
+            </label>
+            {brandsLoading && (
+              <p className="text-sm text-gray-500">
+                {translate('admin_user_brands_loading', 'Loading brands...')}
+              </p>
+            )}
+            {!brandsLoading && brandOptions.length === 0 && (
+              <p className="text-sm text-gray-500">
+                {translate('admin_user_no_brands_available', 'No brands configured yet')}
+              </p>
+            )}
+            {!brandsLoading && brandOptions.length > 0 && (
+              <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                {brandOptions.map((brand) => (
+                  <label key={brand.id} className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      checked={userForm.assignedBrandIds.includes(brand.id)}
+                      onChange={() => toggleBrandSelection(brand.id)}
+                      disabled={userActionLoading}
+                    />
+                    <span>{brand.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3">
@@ -675,6 +709,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
                   {translate('admin_user_table_brands', 'Brand access')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-red-700">
+                  {translate('admin_user_table_credit_limit', 'Daily Limit')}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-red-700">
                   {translate('admin_user_table_created', 'Created')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-red-700 text-right">
@@ -712,6 +749,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {user.dailyCreditLimit && user.dailyCreditLimit > 0 ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                        {user.dailyCreditLimit} / day
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                        {unlimitedLabel}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {formatUserCreatedAt(user.createdAt)}
                   </td>
@@ -741,7 +789,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
                     {usersLoading
                       ? translate('admin_users_loading', 'Loading users...')
                       : translate('admin_users_empty', 'No users found yet')}

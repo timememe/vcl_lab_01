@@ -45,7 +45,7 @@ export async function findUserById(userId) {
       const supabase = getSupabase();
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, role, assigned_brands, created_at')
+        .select('id, username, role, assigned_brands, daily_credit_limit, created_at')
         .eq('id', userId)
         .single();
 
@@ -63,9 +63,9 @@ export async function findUserById(userId) {
 }
 
 // Create user with dual-write
-export async function createUser(username, passwordHash, role, assignedBrands) {
+export async function createUser(username, passwordHash, role, assignedBrands, dailyCreditLimit = 0) {
   // Write to SQLite (primary)
-  const result = userQueries.create.run(username, passwordHash, role, assignedBrands);
+  const result = userQueries.create.run(username, passwordHash, role, assignedBrands, dailyCreditLimit);
 
   // Get the created user with password hash for Supabase sync
   const user = userQueries.findByUsername.get(username);
@@ -82,9 +82,9 @@ export async function createUser(username, passwordHash, role, assignedBrands) {
 }
 
 // Update user with dual-write
-export async function updateUserCore(username, role, assignedBrands, userId) {
+export async function updateUserCore(username, role, assignedBrands, dailyCreditLimit, userId) {
   // Write to SQLite (primary)
-  userQueries.updateCore.run(username, role, assignedBrands, userId);
+  userQueries.updateCore.run(username, role, assignedBrands, dailyCreditLimit, userId);
 
   // Get the updated user
   const user = userQueries.findById.get(userId);
@@ -142,7 +142,7 @@ export async function listUsers() {
       const supabase = getSupabase();
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, role, assigned_brands, created_at')
+        .select('id, username, role, assigned_brands, daily_credit_limit, created_at')
         .order('created_at', { ascending: false });
 
       if (!error && data) {

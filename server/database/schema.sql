@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     assigned_brands TEXT, -- JSON array of brand IDs
+    daily_credit_limit INTEGER DEFAULT 0, -- Per-user daily credit limit (0 = no limit)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

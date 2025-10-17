@@ -32,6 +32,14 @@ function runMigrations() {
     console.log('⚙️  Running migration: Adding assigned_brands column to users table');
     db.exec('ALTER TABLE users ADD COLUMN assigned_brands TEXT');
   }
+
+  // Check if daily_credit_limit column exists
+  const hasDailyCreditLimit = tableInfo.some(col => col.name === 'daily_credit_limit');
+
+  if (!hasDailyCreditLimit) {
+    console.log('⚙️  Running migration: Adding daily_credit_limit column to users table');
+    db.exec('ALTER TABLE users ADD COLUMN daily_credit_limit INTEGER DEFAULT 0');
+  }
 }
 
 runMigrations();
@@ -97,17 +105,17 @@ export function getTodayDate() {
 // User operations
 export const userQueries = {
   findByUsername: db.prepare('SELECT * FROM users WHERE username = ?'),
-  findById: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users WHERE id = ?'),
-  create: db.prepare('INSERT INTO users (username, password_hash, role, assigned_brands) VALUES (?, ?, ?, ?)'),
+  findById: db.prepare('SELECT id, username, role, assigned_brands, daily_credit_limit, created_at FROM users WHERE id = ?'),
+  create: db.prepare('INSERT INTO users (username, password_hash, role, assigned_brands, daily_credit_limit) VALUES (?, ?, ?, ?, ?)'),
   updatePassword: db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   updateBrands: db.prepare('UPDATE users SET assigned_brands = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   updateCore: db.prepare(`
     UPDATE users
-    SET username = ?, role = ?, assigned_brands = ?, updated_at = CURRENT_TIMESTAMP
+    SET username = ?, role = ?, assigned_brands = ?, daily_credit_limit = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `),
   delete: db.prepare('DELETE FROM users WHERE id = ?'),
-  list: db.prepare('SELECT id, username, role, assigned_brands, created_at FROM users ORDER BY created_at DESC'),
+  list: db.prepare('SELECT id, username, role, assigned_brands, daily_credit_limit, created_at FROM users ORDER BY created_at DESC'),
   countAdmins: db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'"),
   countOtherAdmins: db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND id != ?")
 };
