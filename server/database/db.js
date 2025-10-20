@@ -102,7 +102,7 @@ function seedDefaultSettings() {
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM settings').get();
 
   if (settingsCount.count === 0) {
-    const insertSetting = db.prepare('INSERT INTO settings (category, value, label, description, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
+    const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (category, value, label, description, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
 
     // Lighting styles
     const lightingStyles = [
