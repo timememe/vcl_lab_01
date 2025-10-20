@@ -110,49 +110,72 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
 
     const productName = selectedMode === 'preset' && selectedPreset ? selectedPreset.name : (formData.productName as string || 'the product');
 
-    // Build maps from loaded settings
-    const lightingMap: Record<string, string> = {};
+    // Build maps from loaded settings with fallbacks
+    const lightingMap: Record<string, string> = {
+      'soft': 'soft and even lighting',
+      'dramatic': 'dramatic shadows',
+      'bright': 'bright and airy lighting',
+      'golden': 'golden hour lighting',
+      'studio': 'professional studio lighting',
+    };
     lightingSettings.forEach(s => {
       lightingMap[s.value] = s.description || s.label.toLowerCase();
     });
 
-    const backgroundMap: Record<string, string> = {};
+    const backgroundMap: Record<string, string> = {
+      'white': 'a clean white background',
+      'black': 'an elegant black background',
+      'gradient': 'a smooth gradient background',
+      'studio': 'a professional studio setting',
+      'natural': 'a natural, outdoor environment',
+      'minimalist': 'a minimalist scene',
+    };
     backgroundSettings.forEach(s => {
       backgroundMap[s.value] = s.description || s.label.toLowerCase();
     });
 
-    const cameraAngleMap: Record<string, string> = {};
+    const cameraAngleMap: Record<string, string> = {
+      'default': 'a standard product photography angle',
+      'closeup': 'a detailed close-up shot',
+      'dutch_angle': 'a dynamic dutch angle shot',
+      'top_down': 'a top-down, flat-lay perspective',
+      'top': 'a top-down, flat-lay perspective',
+      '45deg': 'a 45-degree angled view',
+      'side': 'a side profile view',
+    };
     cameraAngleSettings.forEach(s => {
       cameraAngleMap[s.value] = s.description || s.label.toLowerCase();
     });
 
-    const lightingDesc = lightingMap[formData.lightingStyle as string] || 'professional studio lighting';
-    const backgroundDesc = backgroundMap[formData.backgroundType as string] || 'a clean background';
-    const cameraAngleDesc = cameraAngleMap[cameraAngle] || 'a standard product photography angle';
+    const lightingDesc = lightingMap[formData.lightingStyle as string] || lightingMap['soft'] || 'professional studio lighting';
+    const backgroundDesc = backgroundMap[formData.backgroundType as string] || backgroundMap['white'] || 'a clean background';
+    const cameraAngleDesc = cameraAngleMap[cameraAngle] || cameraAngleMap['default'] || 'a standard product photography angle';
 
     // Build the prompt using the new structure
     let prompt = `Transform the uploaded image of a product named "${productName}".\n`;
-    prompt += `The camera angle should be: "${cameraAngleDesc}".\n`;
+    prompt += `Camera angle: ${cameraAngleDesc}.\n`;
 
     if (backgroundReference) {
       prompt += `Take the product from the first image and place it in a new scene. The new scene\'s background, lighting, and overall style should be inspired by the second (reference) image.\n`;
     } else {
-      prompt += `Use ${lightingDesc} with ${backgroundDesc}. The composition should be neat and organized.\n`;
+      prompt += `Lighting: ${lightingDesc}.\n`;
+      prompt += `Background: ${backgroundDesc}.\n`;
+      prompt += `The composition should be neat and organized.\n`;
     }
 
-    if (formData.customRequest) {
-      prompt += `Additional requests: "${formData.customRequest as string}".\n`;
+    if (formData.customRequest && (formData.customRequest as string).trim()) {
+      prompt += `\nAdditional requirements: ${formData.customRequest as string}\n`;
     }
 
-    prompt += `The final image must be a hyper-realistic, high-resolution, and professional product photograph. Keep the product itself unchanged but recompose the entire scene around it.`;
+    prompt += `\nThe final image must be a hyper-realistic, high-resolution, and professional product photograph. Keep the product itself unchanged but recompose the entire scene around it.`;
 
     const aiFormData = {
       ...formData,
-      customRequest: prompt, // The whole structured prompt is now the main request
       generationType: 'text-to-image',
       prompt: prompt,
+      customRequest: prompt, // Send as customRequest for backend compatibility
       aspectRatio: aspectRatio,
-      cameraAngle: cameraAngle, // Pass camera angle in form data
+      cameraAngle: cameraAngle,
     };
 
     if (selectedMode === 'preset' && selectedPreset) {
