@@ -13,6 +13,7 @@ import {
   usageLimitQueries,
   globalCreditsQueries,
   settingsQueries,
+  settingsQueriesWithSync,
   getTodayDate,
   transaction
 } from './database/db.js';
@@ -26,6 +27,13 @@ import {
   listUsers,
   countAdmins
 } from './database/user-service.js';
+import {
+  findAllSettings,
+  findSettingsByCategory,
+  findActiveSettingsByCategory,
+  findSettingById,
+  findSettingByValue
+} from './database/settings-service.js';
 import { generateToken, authMiddleware, adminMiddleware } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1515,12 +1523,12 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, 
 // ============================================================
 
 // Get all settings (optionally filter by category)
-app.get('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
+app.get('/api/admin/settings', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { category } = req.query;
     const settings = category
-      ? settingsQueries.findByCategory.all(category)
-      : settingsQueries.findAll.all();
+      ? await findSettingsByCategory(category)
+      : await findAllSettings();
 
     res.json(settings);
   } catch (error) {
@@ -1530,10 +1538,10 @@ app.get('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 // Get active settings by category (public endpoint for forms)
-app.get('/api/settings/:category', authMiddleware, (req, res) => {
+app.get('/api/settings/:category', authMiddleware, async (req, res) => {
   try {
     const { category } = req.params;
-    const settings = settingsQueries.findActiveByCategory.all(category);
+    const settings = await findActiveSettingsByCategory(category);
     res.json(settings);
   } catch (error) {
     console.error('Get active settings error:', error);
@@ -1542,7 +1550,7 @@ app.get('/api/settings/:category', authMiddleware, (req, res) => {
 });
 
 // Create new setting
-app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
+app.post('/api/admin/settings', authMiddleware, adminMiddleware, async (req, res) => {
   const { category, value, label, description, is_active, sort_order } = req.body;
 
   if (!category || !value || !label) {
@@ -1557,12 +1565,12 @@ app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
 
   try {
     // Check if value already exists
-    const existing = settingsQueries.findByValue.get(value);
+    const existing = await findSettingByValue(value);
     if (existing) {
       return res.status(409).json({ message: 'A setting with this value already exists.' });
     }
 
-    const result = settingsQueries.create.run(
+    const result = settingsQueriesWithSync.create.run(
       category,
       value,
       label,
@@ -1571,7 +1579,7 @@ app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
       sort_order || 0
     );
 
-    const newSetting = settingsQueries.findById.get(result.lastInsertRowid);
+    const newSetting = await findSettingById(result.lastInsertRowid);
     res.status(201).json(newSetting);
   } catch (error) {
     console.error('Create setting error:', error);
@@ -1580,7 +1588,7 @@ app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 // Update setting
-app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) => {
+app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const settingId = Number(req.params.id);
   if (!Number.isInteger(settingId) || settingId <= 0) {
     return res.status(400).json({ message: 'Invalid setting id.' });
@@ -1599,20 +1607,20 @@ app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) =
   }
 
   try {
-    const existing = settingsQueries.findById.get(settingId);
+    const existing = await findSettingById(settingId);
     if (!existing) {
       return res.status(404).json({ message: 'Setting not found.' });
     }
 
     // Check if new value conflicts with another setting
     if (value !== existing.value) {
-      const valueConflict = settingsQueries.findByValue.get(value);
+      const valueConflict = await findSettingByValue(value);
       if (valueConflict && valueConflict.id !== settingId) {
         return res.status(409).json({ message: 'A setting with this value already exists.' });
       }
     }
 
-    settingsQueries.update.run(
+    settingsQueriesWithSync.update.run(
       category,
       value,
       label,
@@ -1622,7 +1630,7 @@ app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) =
       settingId
     );
 
-    const updated = settingsQueries.findById.get(settingId);
+    const updated = await findSettingById(settingId);
     res.json(updated);
   } catch (error) {
     console.error('Update setting error:', error);
@@ -1631,19 +1639,19 @@ app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) =
 });
 
 // Delete setting
-app.delete('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) => {
+app.delete('/api/admin/settings/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const settingId = Number(req.params.id);
   if (!Number.isInteger(settingId) || settingId <= 0) {
     return res.status(400).json({ message: 'Invalid setting id.' });
   }
 
   try {
-    const existing = settingsQueries.findById.get(settingId);
+    const existing = await findSettingById(settingId);
     if (!existing) {
       return res.status(404).json({ message: 'Setting not found.' });
     }
 
-    settingsQueries.delete.run(settingId);
+    settingsQueriesWithSync.delete.run(settingId);
     res.status(204).send();
   } catch (error) {
     console.error('Delete setting error:', error);
@@ -1652,22 +1660,22 @@ app.delete('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res
 });
 
 // Toggle setting active status
-app.patch('/api/admin/settings/:id/toggle', authMiddleware, adminMiddleware, (req, res) => {
+app.patch('/api/admin/settings/:id/toggle', authMiddleware, adminMiddleware, async (req, res) => {
   const settingId = Number(req.params.id);
   if (!Number.isInteger(settingId) || settingId <= 0) {
     return res.status(400).json({ message: 'Invalid setting id.' });
   }
 
   try {
-    const existing = settingsQueries.findById.get(settingId);
+    const existing = await findSettingById(settingId);
     if (!existing) {
       return res.status(404).json({ message: 'Setting not found.' });
     }
 
     const newActiveStatus = existing.is_active === 1 ? 0 : 1;
-    settingsQueries.toggleActive.run(newActiveStatus, settingId);
+    settingsQueriesWithSync.toggleActive.run(newActiveStatus, settingId);
 
-    const updated = settingsQueries.findById.get(settingId);
+    const updated = await findSettingById(settingId);
     res.json(updated);
   } catch (error) {
     console.error('Toggle setting error:', error);

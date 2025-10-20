@@ -330,6 +330,14 @@ export function dualWrite(tableName, operation, sqliteQuery, ...params) {
           dataToSync = brandQueries.findById.get(params[0]);
         } else if (tableName === 'activity_logs' && result.lastInsertRowid) {
           dataToSync = db.prepare('SELECT * FROM activity_logs WHERE id = ?').get(result.lastInsertRowid);
+        } else if (tableName === 'settings') {
+          // For settings, fetch by lastInsertRowid or by ID from params
+          if (operation === 'create' && result.lastInsertRowid) {
+            dataToSync = settingsQueries.findById.get(result.lastInsertRowid);
+          } else if (operation === 'update' && params[params.length - 1]) {
+            // Last param is ID in update query
+            dataToSync = settingsQueries.findById.get(params[params.length - 1]);
+          }
         } else if (tableName === 'usage_limits' || tableName === 'global_credits') {
           // For upsert operations, we can construct the data from params
           // This is handled in the specific wrapper functions below
@@ -372,6 +380,15 @@ export const brandQueriesWithSync = {
 export const activityQueriesWithSync = {
   ...activityQueries,
   create: (...params) => dualWrite('activity_logs', 'create', activityQueries.create, ...params),
+};
+
+// Wrapper for settings operations with dual-write
+export const settingsQueriesWithSync = {
+  ...settingsQueries,
+  create: (...params) => dualWrite('settings', 'create', settingsQueries.create, ...params),
+  update: (...params) => dualWrite('settings', 'update', settingsQueries.update, ...params),
+  delete: (...params) => dualWrite('settings', 'delete', settingsQueries.delete, ...params),
+  toggleActive: (...params) => dualWrite('settings', 'update', settingsQueries.toggleActive, ...params),
 };
 
 export default db;

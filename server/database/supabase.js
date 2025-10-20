@@ -100,6 +100,11 @@ export function formatFromSupabase(tableName, data) {
     formatted.metadata = JSON.stringify(formatted.metadata);
   }
 
+  // Convert boolean to integer for settings
+  if (tableName === 'settings' && typeof formatted.is_active === 'boolean') {
+    formatted.is_active = formatted.is_active ? 1 : 0;
+  }
+
   return formatted;
 }
 
