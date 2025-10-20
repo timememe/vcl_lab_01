@@ -177,6 +177,11 @@ export const activityQueries = {
     WHERE DATE(created_at) = ?
     GROUP BY category_id
     ORDER BY total_credits DESC
+  `),
+  getUserDailyCreditsUsed: db.prepare(`
+    SELECT COALESCE(SUM(credits_used), 0) as total_credits
+    FROM activity_logs
+    WHERE user_id = ? AND DATE(created_at) = ?
   `)
 };
 

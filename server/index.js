@@ -553,6 +553,26 @@ app.post('/api/usage/increment', authMiddleware, (req, res) => {
     });
 
     const result = transaction(() => {
+      // Check per-user daily credit limit
+      const user = userQueries.findById.get(userId);
+      if (user && user.daily_credit_limit > 0) {
+        const userUsage = activityQueries.getUserDailyCreditsUsed.get(userId, today);
+        const currentUserCredits = userUsage?.total_credits || 0;
+        const tentativeUserCredits = currentUserCredits + increment;
+
+        console.log(`   User daily limit check (${req.user.username}):`, {
+          limit: user.daily_credit_limit,
+          used: currentUserCredits,
+          requesting: increment,
+          willBe: tentativeUserCredits
+        });
+
+        if (tentativeUserCredits > user.daily_credit_limit) {
+          console.log(`   ❌ REJECTED: User daily credit limit would be exceeded!`);
+          throw new Error('User daily credit limit exceeded');
+        }
+      }
+
       // Check and increment category limit
       const categoryLimit = usageLimitQueries.get.get(today, categoryId);
 
