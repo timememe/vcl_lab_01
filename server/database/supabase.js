@@ -80,6 +80,21 @@ export function formatForSupabase(tableName, data) {
     // Keep as string, PostgreSQL will handle it
   }
 
+  // Convert integer to boolean for settings
+  if (tableName === 'settings' && typeof formatted.is_active === 'number') {
+    formatted.is_active = formatted.is_active === 1;
+  }
+
+  // Debug logging for settings updates
+  if (tableName === 'settings') {
+    console.log('📤 Formatting settings for Supabase:', {
+      id: formatted.id,
+      value: formatted.value,
+      description: formatted.description,
+      is_active: formatted.is_active
+    });
+  }
+
   return formatted;
 }
 

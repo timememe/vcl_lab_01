@@ -336,7 +336,14 @@ export function dualWrite(tableName, operation, sqliteQuery, ...params) {
             dataToSync = settingsQueries.findById.get(result.lastInsertRowid);
           } else if (operation === 'update' && params[params.length - 1]) {
             // Last param is ID in update query
-            dataToSync = settingsQueries.findById.get(params[params.length - 1]);
+            const settingId = params[params.length - 1];
+            dataToSync = settingsQueries.findById.get(settingId);
+            console.log('📝 Settings update - fetched data from SQLite:', {
+              id: settingId,
+              value: dataToSync?.value,
+              description: dataToSync?.description,
+              params: params
+            });
           }
         } else if (tableName === 'usage_limits' || tableName === 'global_credits') {
           // For upsert operations, we can construct the data from params
