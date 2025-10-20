@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Save, Settings2, Shield, ArrowLeft, RotateCcw, Users as UsersIcon, UserPlus, Edit2, Trash2 } from 'lucide-react';
+import { RefreshCw, Save, Settings2, Shield, ArrowLeft, RotateCcw, Users as UsersIcon, UserPlus, Edit2, Trash2, Sliders } from 'lucide-react';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { fetchUsage, updateUsageLimits, resetUsage } from '../../services/usageService';
 import { adminUserService } from '../../services/adminUserService';
@@ -9,6 +9,7 @@ import type { AdminUser, AdminUserPayload } from '../../types/admin';
 import type { Brand } from '../../types';
 import { CATEGORIES } from '../../constants';
 import BrandManager from './BrandManager';
+import SettingsManager from './SettingsManager';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -50,7 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'usage' | 'users' | 'brands'>('usage');
+  const [activeTab, setActiveTab] = useState<'usage' | 'users' | 'brands' | 'settings'>('usage');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersLoaded, setUsersLoaded] = useState(false);
@@ -859,6 +860,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
         >
           {translate('admin_tab_brands', 'Brand management')}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+            activeTab === 'settings'
+              ? 'bg-red-600 text-white shadow-sm'
+              : 'bg-red-50 text-red-700 hover:bg-red-100'
+          }`}
+        >
+          {translate('admin_tab_settings', 'Settings Manager')}
+        </button>
       </div>
 
       {activeTab === 'usage' && renderUsageSection()}
@@ -866,6 +878,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onUsageUpdated
       {activeTab === 'brands' && (
         <BrandManager onDataChanged={handleBrandDataChanged} />
       )}
+      {activeTab === 'settings' && <SettingsManager />}
     </div>
   );
 
