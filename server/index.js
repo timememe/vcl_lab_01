@@ -1621,13 +1621,13 @@ app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, async (req, 
     }
 
     settingsQueriesWithSync.update(
+      settingId,
       category,
       value,
       label,
       description || null,
       is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
-      sort_order !== undefined ? sort_order : existing.sort_order,
-      settingId
+      sort_order !== undefined ? sort_order : existing.sort_order
     );
 
     const updated = await findSettingById(settingId);

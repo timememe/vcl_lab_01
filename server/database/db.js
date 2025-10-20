@@ -297,9 +297,8 @@ export const settingsQueries = {
     VALUES (?, ?, ?, ?, ?, ?)
   `),
   update: db.prepare(`
-    UPDATE settings
-    SET category = ?, value = ?, label = ?, description = ?, is_active = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
+    INSERT OR REPLACE INTO settings (id, category, value, label, description, is_active, sort_order, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `),
   delete: db.prepare('DELETE FROM settings WHERE id = ?'),
   toggleActive: db.prepare('UPDATE settings SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
@@ -334,9 +333,9 @@ export function dualWrite(tableName, operation, sqliteQuery, ...params) {
           // For settings, fetch by lastInsertRowid or by ID from params
           if (operation === 'create' && result.lastInsertRowid) {
             dataToSync = settingsQueries.findById.get(result.lastInsertRowid);
-          } else if (operation === 'update' && params[params.length - 1]) {
-            // Last param is ID in update query
-            const settingId = params[params.length - 1];
+          } else if (operation === 'update' && params[0]) {
+            // First param is ID in update query (INSERT OR REPLACE)
+            const settingId = params[0];
             dataToSync = settingsQueries.findById.get(settingId);
 
             console.log('📝 Settings update - fetched data from SQLite:', {
@@ -347,17 +346,17 @@ export function dualWrite(tableName, operation, sqliteQuery, ...params) {
             });
 
             // If not found in SQLite, construct from params
-            // UPDATE query params: category, value, label, description, is_active, sort_order, id
+            // UPDATE query params: id, category, value, label, description, is_active, sort_order
             if (!dataToSync && params.length >= 7) {
               console.log('⚠️  Setting not found in SQLite, constructing from params');
               dataToSync = {
-                id: params[6],
-                category: params[0],
-                value: params[1],
-                label: params[2],
-                description: params[3],
-                is_active: params[4],
-                sort_order: params[5]
+                id: params[0],
+                category: params[1],
+                value: params[2],
+                label: params[3],
+                description: params[4],
+                is_active: params[5],
+                sort_order: params[6]
               };
             }
           }
