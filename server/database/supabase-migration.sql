@@ -147,3 +147,35 @@ CREATE TRIGGER update_brands_updated_at BEFORE UPDATE ON brands
 -- Migration: Add daily_credit_limit to existing users table
 -- Run this if table already exists without this column
 ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_credit_limit INTEGER DEFAULT 0;
+
+-- Settings table for configurable options
+CREATE TABLE IF NOT EXISTS settings (
+    id SERIAL PRIMARY KEY,
+    category TEXT NOT NULL, -- 'lighting', 'camera_angle', 'background'
+    value TEXT NOT NULL UNIQUE, -- The actual value (e.g., 'bright', 'soft', '45deg', 'top')
+    label TEXT NOT NULL, -- Display label
+    description TEXT, -- Optional description
+    is_active BOOLEAN DEFAULT true, -- false = disabled, true = active
+    sort_order INTEGER DEFAULT 0, -- For custom ordering
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for settings
+CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
+CREATE INDEX IF NOT EXISTS idx_settings_category_active ON settings(category, is_active);
+
+-- Trigger for updated_at on settings
+CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS Policies for settings
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read active settings"
+    ON settings FOR SELECT
+    USING (is_active = true);
+
+CREATE POLICY "Service role can do anything with settings"
+    ON settings FOR ALL
+    USING (true);

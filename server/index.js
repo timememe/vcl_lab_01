@@ -12,6 +12,7 @@ import {
   activityQueries,
   usageLimitQueries,
   globalCreditsQueries,
+  settingsQueries,
   getTodayDate,
   transaction
 } from './database/db.js';
@@ -1504,6 +1505,172 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, 
     res.status(204).send();
   } catch (error) {
     console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+// ============================================================
+// Settings Management endpoints
+// ============================================================
+
+// Get all settings (optionally filter by category)
+app.get('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
+  try {
+    const { category } = req.query;
+    const settings = category
+      ? settingsQueries.findByCategory.all(category)
+      : settingsQueries.findAll.all();
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get active settings by category (public endpoint for forms)
+app.get('/api/settings/:category', authMiddleware, (req, res) => {
+  try {
+    const { category } = req.params;
+    const settings = settingsQueries.findActiveByCategory.all(category);
+    res.json(settings);
+  } catch (error) {
+    console.error('Get active settings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Create new setting
+app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
+  const { category, value, label, description, is_active, sort_order } = req.body;
+
+  if (!category || !value || !label) {
+    return res.status(400).json({ message: 'category, value, and label are required.' });
+  }
+
+  // Validate category
+  const validCategories = ['lighting', 'camera_angle', 'background'];
+  if (!validCategories.includes(category)) {
+    return res.status(400).json({ message: 'Invalid category. Must be: lighting, camera_angle, or background.' });
+  }
+
+  try {
+    // Check if value already exists
+    const existing = settingsQueries.findByValue.get(value);
+    if (existing) {
+      return res.status(409).json({ message: 'A setting with this value already exists.' });
+    }
+
+    const result = settingsQueries.create.run(
+      category,
+      value,
+      label,
+      description || null,
+      is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      sort_order || 0
+    );
+
+    const newSetting = settingsQueries.findById.get(result.lastInsertRowid);
+    res.status(201).json(newSetting);
+  } catch (error) {
+    console.error('Create setting error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update setting
+app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const settingId = Number(req.params.id);
+  if (!Number.isInteger(settingId) || settingId <= 0) {
+    return res.status(400).json({ message: 'Invalid setting id.' });
+  }
+
+  const { category, value, label, description, is_active, sort_order } = req.body;
+
+  if (!category || !value || !label) {
+    return res.status(400).json({ message: 'category, value, and label are required.' });
+  }
+
+  // Validate category
+  const validCategories = ['lighting', 'camera_angle', 'background'];
+  if (!validCategories.includes(category)) {
+    return res.status(400).json({ message: 'Invalid category. Must be: lighting, camera_angle, or background.' });
+  }
+
+  try {
+    const existing = settingsQueries.findById.get(settingId);
+    if (!existing) {
+      return res.status(404).json({ message: 'Setting not found.' });
+    }
+
+    // Check if new value conflicts with another setting
+    if (value !== existing.value) {
+      const valueConflict = settingsQueries.findByValue.get(value);
+      if (valueConflict && valueConflict.id !== settingId) {
+        return res.status(409).json({ message: 'A setting with this value already exists.' });
+      }
+    }
+
+    settingsQueries.update.run(
+      category,
+      value,
+      label,
+      description || null,
+      is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
+      sort_order !== undefined ? sort_order : existing.sort_order,
+      settingId
+    );
+
+    const updated = settingsQueries.findById.get(settingId);
+    res.json(updated);
+  } catch (error) {
+    console.error('Update setting error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Delete setting
+app.delete('/api/admin/settings/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const settingId = Number(req.params.id);
+  if (!Number.isInteger(settingId) || settingId <= 0) {
+    return res.status(400).json({ message: 'Invalid setting id.' });
+  }
+
+  try {
+    const existing = settingsQueries.findById.get(settingId);
+    if (!existing) {
+      return res.status(404).json({ message: 'Setting not found.' });
+    }
+
+    settingsQueries.delete.run(settingId);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete setting error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Toggle setting active status
+app.patch('/api/admin/settings/:id/toggle', authMiddleware, adminMiddleware, (req, res) => {
+  const settingId = Number(req.params.id);
+  if (!Number.isInteger(settingId) || settingId <= 0) {
+    return res.status(400).json({ message: 'Invalid setting id.' });
+  }
+
+  try {
+    const existing = settingsQueries.findById.get(settingId);
+    if (!existing) {
+      return res.status(404).json({ message: 'Setting not found.' });
+    }
+
+    const newActiveStatus = existing.is_active === 1 ? 0 : 1;
+    settingsQueries.toggleActive.run(newActiveStatus, settingId);
+
+    const updated = settingsQueries.findById.get(settingId);
+    res.json(updated);
+  } catch (error) {
+    console.error('Toggle setting error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

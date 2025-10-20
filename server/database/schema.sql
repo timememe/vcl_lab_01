@@ -57,8 +57,23 @@ CREATE TABLE IF NOT EXISTS brands (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Settings table for configurable options
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL, -- 'lighting', 'camera_angle', 'background'
+    value TEXT NOT NULL UNIQUE, -- The actual value (e.g., 'bright', 'soft', '45deg', 'top')
+    label TEXT NOT NULL, -- Display label
+    description TEXT, -- Optional description
+    is_active INTEGER DEFAULT 1, -- 0 = disabled, 1 = active
+    sort_order INTEGER DEFAULT 0, -- For custom ordering
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_limits_date ON usage_limits(date);
 CREATE INDEX IF NOT EXISTS idx_global_credits_date ON global_credits(date);
+CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
+CREATE INDEX IF NOT EXISTS idx_settings_category_active ON settings(category, is_active);

@@ -97,6 +97,58 @@ function seedDefaultData() {
 
 seedDefaultData();
 
+// Seed default settings
+function seedDefaultSettings() {
+  const settingsCount = db.prepare('SELECT COUNT(*) as count FROM settings').get();
+
+  if (settingsCount.count === 0) {
+    const insertSetting = db.prepare('INSERT INTO settings (category, value, label, description, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
+
+    // Lighting styles
+    const lightingStyles = [
+      { value: 'bright', label: 'Bright', description: 'Bright, even studio lighting' },
+      { value: 'soft', label: 'Soft', description: 'Soft diffused lighting' },
+      { value: 'dramatic', label: 'Dramatic', description: 'Dramatic lighting with strong shadows' },
+      { value: 'golden', label: 'Golden Hour', description: 'Warm golden hour lighting' },
+      { value: 'natural', label: 'Natural', description: 'Soft natural lighting' }
+    ];
+
+    lightingStyles.forEach((style, idx) => {
+      insertSetting.run('lighting', style.value, style.label, style.description, 1, idx);
+    });
+
+    // Camera angles
+    const cameraAngles = [
+      { value: 'default', label: 'Default (Eye Level)', description: 'Standard eye-level perspective' },
+      { value: '45deg', label: '45 Degree', description: '45-degree angled view' },
+      { value: 'top', label: 'Top Down', description: 'Overhead bird\'s eye view' },
+      { value: 'closeup', label: 'Close-up', description: 'Close-up detail shot' },
+      { value: 'side', label: 'Side View', description: 'Side profile view' }
+    ];
+
+    cameraAngles.forEach((angle, idx) => {
+      insertSetting.run('camera_angle', angle.value, angle.label, angle.description, 1, idx);
+    });
+
+    // Background types
+    const backgroundTypes = [
+      { value: 'white', label: 'Pure White', description: 'Clean white background' },
+      { value: 'gradient', label: 'Gradient', description: 'Smooth gradient background' },
+      { value: 'studio', label: 'Studio', description: 'Professional studio backdrop' },
+      { value: 'natural', label: 'Natural', description: 'Natural environment setting' },
+      { value: 'minimalist', label: 'Minimalist', description: 'Minimal, clean background' }
+    ];
+
+    backgroundTypes.forEach((bg, idx) => {
+      insertSetting.run('background', bg.value, bg.label, bg.description, 1, idx);
+    });
+
+    console.log('✓ Default settings seeded (lighting, camera_angle, background)');
+  }
+}
+
+seedDefaultSettings();
+
 // Helper to get today's date in YYYY-MM-DD format
 export function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -231,6 +283,26 @@ export const globalCreditsQueries = {
       daily_limit = excluded.daily_limit,
       updated_at = CURRENT_TIMESTAMP
   `)
+};
+
+// Settings operations
+export const settingsQueries = {
+  findAll: db.prepare('SELECT * FROM settings ORDER BY category, sort_order, label'),
+  findByCategory: db.prepare('SELECT * FROM settings WHERE category = ? ORDER BY sort_order, label'),
+  findActiveByCategory: db.prepare('SELECT * FROM settings WHERE category = ? AND is_active = 1 ORDER BY sort_order, label'),
+  findById: db.prepare('SELECT * FROM settings WHERE id = ?'),
+  findByValue: db.prepare('SELECT * FROM settings WHERE value = ?'),
+  create: db.prepare(`
+    INSERT INTO settings (category, value, label, description, is_active, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `),
+  update: db.prepare(`
+    UPDATE settings
+    SET category = ?, value = ?, label = ?, description = ?, is_active = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `),
+  delete: db.prepare('DELETE FROM settings WHERE id = ?'),
+  toggleActive: db.prepare('UPDATE settings SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
 };
 
 // Transaction helper
