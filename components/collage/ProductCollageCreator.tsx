@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, Download, Wand2, Settings, Image as ImageIcon, ToggleLeft, ToggleRight, Camera } from 'lucide-react';
 import { CollageElement, CollageState } from '../../types/collage';
 import { AIModel, Category, Product } from '../../types';
@@ -13,6 +13,8 @@ import BackgroundManager from './BackgroundManager';
 import ElementLabels from './ElementLabels';
 import InteractiveUploadGrid from './InteractiveUploadGrid';
 import LoadingIndicator from '../LoadingIndicator';
+import { settingsService } from '../../services/settingsService';
+import type { Setting } from '../../types/settings';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -38,6 +40,33 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   const { t } = useLocalization();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+
+  // Settings state
+  const [lightingSettings, setLightingSettings] = useState<Setting[]>([]);
+  const [backgroundSettings, setBackgroundSettings] = useState<Setting[]>([]);
+  const [cameraAngleSettings, setCameraAngleSettings] = useState<Setting[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const [lighting, background, camera] = await Promise.all([
+          settingsService.getActiveSettings('lighting'),
+          settingsService.getActiveSettings('background'),
+          settingsService.getActiveSettings('camera_angle')
+        ]);
+        setLightingSettings(lighting);
+        setBackgroundSettings(background);
+        setCameraAngleSettings(camera);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Collage mode toggle
   const [isCollageMode, setIsCollageMode] = useState(false);
@@ -81,29 +110,21 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
 
     const productName = selectedMode === 'preset' && selectedPreset ? selectedPreset.name : (formData.productName as string || 'the product');
 
-    const lightingMap: Record<string, string> = {
-      soft: 'soft and even lighting',
-      dramatic: 'dramatic shadows',
-      bright: 'bright and airy lighting',
-      golden: 'golden hour lighting',
-      studio: 'professional studio lighting',
-    };
+    // Build maps from loaded settings
+    const lightingMap: Record<string, string> = {};
+    lightingSettings.forEach(s => {
+      lightingMap[s.value] = s.description || s.label.toLowerCase();
+    });
 
-    const backgroundMap: Record<string, string> = {
-      white: 'a clean white background',
-      black: 'an elegant black background',
-      gradient: 'a smooth gradient background',
-      studio: 'a professional studio setting',
-      natural: 'a natural, outdoor environment',
-      minimalist: 'a minimalist scene',
-    };
+    const backgroundMap: Record<string, string> = {};
+    backgroundSettings.forEach(s => {
+      backgroundMap[s.value] = s.description || s.label.toLowerCase();
+    });
 
-    const cameraAngleMap: Record<string, string> = {
-      default: 'a standard product photography angle',
-      closeup: 'a detailed close-up shot',
-      dutch_angle: 'a dynamic dutch angle shot',
-      top_down: 'a top-down, flat-lay perspective',
-    };
+    const cameraAngleMap: Record<string, string> = {};
+    cameraAngleSettings.forEach(s => {
+      cameraAngleMap[s.value] = s.description || s.label.toLowerCase();
+    });
 
     const lightingDesc = lightingMap[formData.lightingStyle as string] || 'professional studio lighting';
     const backgroundDesc = backgroundMap[formData.backgroundType as string] || 'a clean background';
@@ -344,30 +365,43 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Lighting Style</label>
-                  <select
-                    value={formData.lightingStyle as string || 'soft'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    <option value="soft">Soft & Even</option>
-                    <option value="dramatic">Dramatic Shadows</option>
-                    <option value="bright">Bright & Airy</option>
-                    <option value="golden">Golden Hour</option>
-                    <option value="studio">Professional Studio</option>
-                  </select>
+                  {settingsLoading ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
+                      Loading...
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.lightingStyle as string || (lightingSettings[0]?.value || 'soft')}
+                      onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      {lightingSettings.map(setting => (
+                        <option key={setting.id} value={setting.value}>
+                          {setting.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
-                  <select
-                    value={cameraAngle}
-                    onChange={(e) => setCameraAngle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    <option value="default">Default Angle</option>
-                    <option value="closeup">Close-up</option>
-                    <option value="dutch_angle">Dutch Angle</option>
-                    <option value="top_down">Top-down</option>
-                  </select>
+                  {settingsLoading ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
+                      Loading...
+                    </div>
+                  ) : (
+                    <select
+                      value={cameraAngle}
+                      onChange={(e) => setCameraAngle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      {cameraAngleSettings.map(setting => (
+                        <option key={setting.id} value={setting.value}>
+                          {setting.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             </div>
@@ -380,18 +414,23 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Background Type</label>
-                    <select
-                      value={formData.backgroundType as string || 'white'}
-                      onChange={(e) => setFormData(prev => ({ ...prev, backgroundType: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="white">Clean White</option>
-                      <option value="black">Elegant Black</option>
-                      <option value="gradient">Gradient Background</option>
-                      <option value="studio">Studio Setup</option>
-                      <option value="natural">Natural Environment</option>
-                      <option value="minimalist">Minimalist Scene</option>
-                    </select>
+                    {settingsLoading ? (
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
+                        Loading...
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.backgroundType as string || (backgroundSettings[0]?.value || 'white')}
+                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundType: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        {backgroundSettings.map(setting => (
+                          <option key={setting.id} value={setting.value}>
+                            {setting.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
