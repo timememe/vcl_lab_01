@@ -1570,7 +1570,7 @@ app.post('/api/admin/settings', authMiddleware, adminMiddleware, async (req, res
       return res.status(409).json({ message: 'A setting with this value already exists.' });
     }
 
-    const result = settingsQueriesWithSync.create.run(
+    const result = settingsQueriesWithSync.create(
       category,
       value,
       label,
@@ -1620,7 +1620,7 @@ app.put('/api/admin/settings/:id', authMiddleware, adminMiddleware, async (req, 
       }
     }
 
-    settingsQueriesWithSync.update.run(
+    settingsQueriesWithSync.update(
       category,
       value,
       label,
@@ -1651,7 +1651,7 @@ app.delete('/api/admin/settings/:id', authMiddleware, adminMiddleware, async (re
       return res.status(404).json({ message: 'Setting not found.' });
     }
 
-    settingsQueriesWithSync.delete.run(settingId);
+    settingsQueriesWithSync.delete(settingId);
     res.status(204).send();
   } catch (error) {
     console.error('Delete setting error:', error);
@@ -1673,7 +1673,7 @@ app.patch('/api/admin/settings/:id/toggle', authMiddleware, adminMiddleware, asy
     }
 
     const newActiveStatus = existing.is_active === 1 ? 0 : 1;
-    settingsQueriesWithSync.toggleActive.run(newActiveStatus, settingId);
+    settingsQueriesWithSync.toggleActive(newActiveStatus, settingId);
 
     const updated = await findSettingById(settingId);
     res.json(updated);
