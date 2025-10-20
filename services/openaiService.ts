@@ -154,8 +154,16 @@ export const generateProductImagesOpenAI = async (
         throw new Error("Image file is empty (0 bytes). Please select a valid image file.");
     }
 
-    // Generate prompt using the category template
-    const prompt = category.promptTemplate(formData as Record<string, string>);
+    // Check if prompt is already generated (e.g., by ProductCollageCreator)
+    // If so, use it directly. Otherwise, use category template.
+    let prompt: string;
+    if (formData.prompt && typeof formData.prompt === 'string') {
+        prompt = formData.prompt;
+        console.log("Using pre-generated prompt from formData");
+    } else {
+        // Pass all form data to the template, including files for conditional logic
+        prompt = category.promptTemplate(formData as Record<string, string>);
+    }
     console.log("Generated Prompt for OpenAI:", prompt);
 
     try {

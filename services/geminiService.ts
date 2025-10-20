@@ -124,8 +124,16 @@ export const generateProductImages = async (
 
   const imagePart = await fileOrUrlToBase64(imageToSend);
 
-  // Pass all form data to the template, including files for conditional logic
-  const prompt = category.promptTemplate(formData as Record<string, string>);
+  // Check if prompt is already generated (e.g., by ProductCollageCreator)
+  // If so, use it directly. Otherwise, use category template.
+  let prompt: string;
+  if (formData.prompt && typeof formData.prompt === 'string') {
+    prompt = formData.prompt;
+    console.log("Using pre-generated prompt from formData");
+  } else {
+    // Pass all form data to the template, including files for conditional logic
+    prompt = category.promptTemplate(formData as Record<string, string>);
+  }
   console.log("Generated Prompt:", prompt);
 
   const parts: any[] = [{ inlineData: imagePart }];
