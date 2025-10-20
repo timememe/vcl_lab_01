@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "start": "NODE_ENV=production node server/index.js",
     "start:api": "node server/index.js",
-    "server": "node server/index.js"
+    "server": "node server/index.js",
+    "migrate:settings": "node server/database/migrate-settings-to-supabase.js"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
