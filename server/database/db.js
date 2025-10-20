@@ -338,12 +338,28 @@ export function dualWrite(tableName, operation, sqliteQuery, ...params) {
             // Last param is ID in update query
             const settingId = params[params.length - 1];
             dataToSync = settingsQueries.findById.get(settingId);
+
             console.log('📝 Settings update - fetched data from SQLite:', {
               id: settingId,
               value: dataToSync?.value,
               description: dataToSync?.description,
               params: params
             });
+
+            // If not found in SQLite, construct from params
+            // UPDATE query params: category, value, label, description, is_active, sort_order, id
+            if (!dataToSync && params.length >= 7) {
+              console.log('⚠️  Setting not found in SQLite, constructing from params');
+              dataToSync = {
+                id: params[6],
+                category: params[0],
+                value: params[1],
+                label: params[2],
+                description: params[3],
+                is_active: params[4],
+                sort_order: params[5]
+              };
+            }
           }
         } else if (tableName === 'usage_limits' || tableName === 'global_credits') {
           // For upsert operations, we can construct the data from params
