@@ -43,16 +43,11 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelec
     <div className="w-full max-w-7xl p-6">
       {/* Header Section */}
       <div className="text-center mb-12">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <Sparkles className="w-8 h-8 text-red-600" />
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-            {t('category_selector_title')}
-          </h2>
-          <Sparkles className="w-8 h-8 text-red-600" />
+        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-100 to-pink-100 rounded-full text-red-700 font-medium border border-red-200">
+          <Sparkles className="w-4 h-4" />
+          <span>Choose a category to begin your AI transformation</span>
+          <Sparkles className="w-4 h-4" />
         </div>
-        <p className="text-lg text-red-600/80 font-medium max-w-2xl mx-auto">
-          {t('category_selector_subtitle')}
-        </p>
       </div>
 
       {/* Categories Grid */}
@@ -121,14 +116,6 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({ categories, onSelec
         })}
       </div>
 
-      {/* Bottom decoration */}
-      <div className="text-center mt-16">
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-100 to-pink-100 rounded-full text-red-700 font-medium border border-red-200">
-          <Sparkles className="w-4 h-4" />
-          <span>Choose a category to begin your AI transformation</span>
-          <Sparkles className="w-4 h-4" />
-        </div>
-      </div>
     </div>
   );
 };
