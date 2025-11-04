@@ -10,7 +10,7 @@ const App: React.FC = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<IndexPlaceholder />} />
-        <Route path="/vcl-lab" element={<VclLabApp />} />
+        <Route path="/vcl" element={<VclLabApp />} />
         <Route path="/filcheck" element={<FilcheckPlaceholder />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
