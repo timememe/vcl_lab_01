@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import FilcheckPlaceholder from './pages/FilcheckPlaceholder';
 import IndexPlaceholder from './pages/IndexPlaceholder';
 import VclLabApp from './pages/VclLabApp';
+import ShaderTestPage from './pages/ShaderTestPage';
 
 const App: React.FC = () => {
   return (
@@ -12,6 +13,7 @@ const App: React.FC = () => {
         <Route path="/" element={<IndexPlaceholder />} />
         <Route path="/vcl" element={<VclLabApp />} />
         <Route path="/filcheck" element={<FilcheckPlaceholder />} />
+        <Route path="/shader-test" element={<ShaderTestPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

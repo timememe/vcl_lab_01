@@ -1,15 +1,16 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 // Глобальные переменные анимации
 const MAIN_IMAGE_SIZE = 420; // размер главного изображения в пикселях
+
 const MAIN_ANIMATION_SPEED = 8000; // скорость выезда главного изображения (мс)
 const CLONE_MIN_SIZE = 100; // минимальный размер клонов
 const CLONE_MAX_SIZE = 250; // максимальный размер клонов
 const CLONE_INITIAL_SPEED = 2; // начальная скорость движения клонов (пикселей за кадр)
 const CLONE_MIN_COUNT = 3; // минимальное количество клонов
 const CLONE_MAX_COUNT = 7; // максимальное количество клонов
-const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 80% скорости сохराняется)
+const BOUNCE_DAMPING = 0.8; // затухание при отскоке (0.8 = 80% скорости сохняется)
 const COLLISION_FORCE = 0.5; // сила отталкивания при столкновении
 const CURSOR_RADIUS = 100; // радиус отталкивания вокруг курсора
 const CURSOR_FORCE = 1.5; // сила отталкивания от курсора
