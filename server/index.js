@@ -808,6 +808,8 @@ app.post('/api/gallery', authMiddleware, async (req, res) => {
     }
 
     console.log(`💾 Saving image to gallery for user ${userId}, category: ${category_id}`);
+    console.log(`   Image URL: ${image_url.substring(0, 50)}...`);
+    console.log(`   AI Model: ${ai_model || 'unknown'}`);
 
     const result = generatedImageQueriesWithSync.create.run(
       userId,
@@ -819,6 +821,8 @@ app.post('/api/gallery', authMiddleware, async (req, res) => {
       ai_model || null
     );
 
+    console.log(`   ✅ Image saved with ID: ${result.lastInsertRowid}`);
+
     const savedImage = generatedImageQueries.findById.get(result.lastInsertRowid);
 
     res.json({
@@ -826,8 +830,13 @@ app.post('/api/gallery', authMiddleware, async (req, res) => {
       metadata: savedImage.metadata ? JSON.parse(savedImage.metadata) : null
     });
   } catch (error) {
-    console.error('Save to gallery error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('❌ Save to gallery error:', error);
+    console.error('   Error details:', error.message);
+    console.error('   Stack:', error.stack);
+    res.status(500).json({
+      message: 'Failed to save image to gallery',
+      error: error.message
+    });
   }
 });
 
@@ -1829,11 +1838,22 @@ app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
       ...(aspectRatio && { imageConfig: { aspectRatio } })
     };
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents,
-      config
-    });
+    // Try Gemini 3.0 models first, fallback to 2.0
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.0-flash-exp',
+        contents,
+        config
+      });
+    } catch (modelError) {
+      console.log('⚠️  Gemini 3.0 not available, trying 2.0 Flash...');
+      response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents,
+        config
+      });
+    }
 
     // Extract image from response
     for (const part of response.candidates[0].content.parts) {
