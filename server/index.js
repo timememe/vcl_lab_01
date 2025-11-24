@@ -811,7 +811,7 @@ app.post('/api/gallery', authMiddleware, async (req, res) => {
     console.log(`   Image URL: ${image_url.substring(0, 50)}...`);
     console.log(`   AI Model: ${ai_model || 'unknown'}`);
 
-    const result = generatedImageQueriesWithSync.create.run(
+    const result = generatedImageQueriesWithSync.create(
       userId,
       category_id,
       image_url,
@@ -855,7 +855,7 @@ app.patch('/api/gallery/:id/favorite', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    generatedImageQueriesWithSync.toggleFavorite.run(imageId);
+    generatedImageQueriesWithSync.toggleFavorite(imageId);
 
     const updatedImage = generatedImageQueries.findById.get(imageId);
     res.json({
@@ -883,7 +883,7 @@ app.delete('/api/gallery/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    generatedImageQueriesWithSync.delete.run(imageId);
+    generatedImageQueriesWithSync.delete(imageId);
 
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
