@@ -1838,21 +1838,33 @@ app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
       ...(aspectRatio && { imageConfig: { aspectRatio } })
     };
 
-    // Try Gemini 3.0 models first, fallback to 2.0
+    // Try Gemini 3 Pro first, fallback to 2.5 Flash
     let response;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-3.0-flash-exp',
+        model: 'gemini-3-pro-image-preview',
         contents,
         config
       });
+      console.log('✅ Using Gemini 3 Pro Image');
     } catch (modelError) {
-      console.log('⚠️  Gemini 3.0 not available, trying 2.0 Flash...');
-      response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents,
-        config
-      });
+      console.log('⚠️  Gemini 3 Pro not available, trying 2.5 Flash Image...');
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents,
+          config
+        });
+        console.log('✅ Using Gemini 2.5 Flash Image');
+      } catch (fallbackError) {
+        console.log('⚠️  Gemini 2.5 also failed, trying 2.0 Preview...');
+        response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash-preview-image-generation',
+          contents,
+          config
+        });
+        console.log('✅ Using Gemini 2.0 Flash Preview');
+      }
     }
 
     // Extract image from response
