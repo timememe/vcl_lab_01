@@ -70,6 +70,21 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Generated images gallery table
+CREATE TABLE IF NOT EXISTS generated_images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    category_id TEXT NOT NULL, -- Category of generation (product_photo, collage, etc.)
+    image_url TEXT NOT NULL, -- Path to the generated image
+    thumbnail_url TEXT, -- Optional thumbnail for faster loading
+    prompt TEXT, -- The prompt used for generation
+    metadata TEXT, -- JSON with generation parameters (lighting, background, model, etc.)
+    ai_model TEXT, -- AI model used (gemini, openai)
+    is_favorite INTEGER DEFAULT 0, -- User can mark favorites
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
@@ -77,3 +92,6 @@ CREATE INDEX IF NOT EXISTS idx_usage_limits_date ON usage_limits(date);
 CREATE INDEX IF NOT EXISTS idx_global_credits_date ON global_credits(date);
 CREATE INDEX IF NOT EXISTS idx_settings_category ON settings(category);
 CREATE INDEX IF NOT EXISTS idx_settings_category_active ON settings(category, is_active);
+CREATE INDEX IF NOT EXISTS idx_generated_images_user_id ON generated_images(user_id);
+CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at);
+CREATE INDEX IF NOT EXISTS idx_generated_images_category ON generated_images(category_id);

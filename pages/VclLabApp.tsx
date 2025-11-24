@@ -13,7 +13,9 @@ import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../components/LoginScreen';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import SoraVideoGenerator from '../components/SoraVideoGenerator';
+import ImageGallery from '../components/gallery/ImageGallery';
 import { fetchUsage } from '../services/usageService';
+import { galleryService } from '../services/galleryService';
 
 const VclLabApp: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<string>('category');
@@ -23,7 +25,7 @@ const VclLabApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
-  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'sora'>('generator');
+  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'sora' | 'gallery'>('generator');
   const [usageSnapshot, setUsageSnapshot] = useState<UsageRecord | null>(null);
   const { t, setLocale, locale } = useLocalization();
   const translate = useCallback((key: string, fallback: string) => {
@@ -87,6 +89,28 @@ const VclLabApp: React.FC = () => {
       setGeneratedImages(images);
       setCurrentStep('generator'); // Stay on the generator screen
       await refreshUsage();
+
+      // Save each generated image to gallery
+      for (const imageUrl of images) {
+        try {
+          await galleryService.saveImage({
+            category_id: selectedCategory.id,
+            image_url: imageUrl,
+            prompt: typeof formData.customPrompt === 'string' ? formData.customPrompt : undefined,
+            metadata: {
+              model: modelToUse,
+              category: selectedCategory.id,
+              formData: Object.fromEntries(
+                Object.entries(formData).filter(([_, v]) => typeof v === 'string')
+              )
+            },
+            ai_model: modelToUse
+          });
+        } catch (saveError) {
+          console.error('Failed to save image to gallery:', saveError);
+          // Don't fail the whole generation if gallery save fails
+        }
+      }
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
@@ -123,6 +147,14 @@ const VclLabApp: React.FC = () => {
         <AdminDashboard
           onClose={() => setActiveView('generator')}
           onUsageUpdated={(usage) => setUsageSnapshot(usage)}
+        />
+      );
+    }
+
+    if (activeView === 'gallery') {
+      return (
+        <ImageGallery
+          onClose={() => setActiveView('generator')}
         />
       );
     }
@@ -250,6 +282,12 @@ const VclLabApp: React.FC = () => {
               </div>
             )}
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setActiveView(activeView === 'gallery' ? 'generator' : 'gallery')}
+                className={`px-3 py-1 text-xs rounded-md ${activeView === 'gallery' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+              >
+                {translate('gallery_button', 'My Gallery')}
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => setActiveView(activeView === 'sora' ? 'generator' : 'sora')}

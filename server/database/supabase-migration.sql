@@ -179,3 +179,34 @@ CREATE POLICY "Users can read active settings"
 CREATE POLICY "Service role can do anything with settings"
     ON settings FOR ALL
     USING (true);
+
+-- Generated images gallery table
+CREATE TABLE IF NOT EXISTS generated_images (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id TEXT NOT NULL, -- Category of generation (product_photo, collage, etc.)
+    image_url TEXT NOT NULL, -- Path to the generated image
+    thumbnail_url TEXT, -- Optional thumbnail for faster loading
+    prompt TEXT, -- The prompt used for generation
+    metadata JSONB, -- JSON with generation parameters (lighting, background, model, etc.)
+    ai_model TEXT, -- AI model used (gemini, openai)
+    is_favorite BOOLEAN DEFAULT false, -- User can mark favorites
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for generated_images
+CREATE INDEX IF NOT EXISTS idx_generated_images_user_id ON generated_images(user_id);
+CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at);
+CREATE INDEX IF NOT EXISTS idx_generated_images_category ON generated_images(category_id);
+CREATE INDEX IF NOT EXISTS idx_generated_images_user_category ON generated_images(user_id, category_id);
+
+-- RLS Policies for generated_images
+ALTER TABLE generated_images ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read their own images"
+    ON generated_images FOR SELECT
+    USING (true); -- Will be filtered by application logic
+
+CREATE POLICY "Service role can do anything with generated_images"
+    ON generated_images FOR ALL
+    USING (true);

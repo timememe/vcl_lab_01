@@ -413,4 +413,40 @@ export const settingsQueriesWithSync = {
   toggleActive: (...params) => dualWrite('settings', 'update', settingsQueries.toggleActive, ...params),
 };
 
+// Generated images operations
+export const generatedImageQueries = {
+  create: db.prepare(`
+    INSERT INTO generated_images (user_id, category_id, image_url, thumbnail_url, prompt, metadata, ai_model)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `),
+  findByUserId: db.prepare(`
+    SELECT * FROM generated_images
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `),
+  findByUserIdAndCategory: db.prepare(`
+    SELECT * FROM generated_images
+    WHERE user_id = ? AND category_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `),
+  findById: db.prepare('SELECT * FROM generated_images WHERE id = ?'),
+  toggleFavorite: db.prepare(`
+    UPDATE generated_images
+    SET is_favorite = CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END
+    WHERE id = ?
+  `),
+  delete: db.prepare('DELETE FROM generated_images WHERE id = ?'),
+  getUserImageCount: db.prepare('SELECT COUNT(*) as count FROM generated_images WHERE user_id = ?')
+};
+
+// Wrapper for generated images operations with dual-write
+export const generatedImageQueriesWithSync = {
+  ...generatedImageQueries,
+  create: (...params) => dualWrite('generated_images', 'create', generatedImageQueries.create, ...params),
+  delete: (...params) => dualWrite('generated_images', 'delete', generatedImageQueries.delete, ...params),
+  toggleFavorite: (...params) => dualWrite('generated_images', 'update', generatedImageQueries.toggleFavorite, ...params),
+};
+
 export default db;
