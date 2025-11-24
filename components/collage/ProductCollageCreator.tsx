@@ -68,6 +68,17 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     loadSettings();
   }, []);
 
+  // Set default values from loaded settings
+  useEffect(() => {
+    if (!settingsLoading && lightingSettings.length > 0 && backgroundSettings.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        lightingStyle: prev.lightingStyle || lightingSettings[0]?.value,
+        backgroundType: prev.backgroundType || backgroundSettings[0]?.value
+      }));
+    }
+  }, [settingsLoading, lightingSettings, backgroundSettings]);
+
   // Collage mode toggle
   const [isCollageMode, setIsCollageMode] = useState(false);
 
@@ -147,8 +158,10 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       cameraAngleMap[s.value] = s.description || s.label.toLowerCase();
     });
 
-    const lightingDesc = lightingMap[formData.lightingStyle as string] || lightingMap['soft'] || 'professional studio lighting';
-    const backgroundDesc = backgroundMap[formData.backgroundType as string] || backgroundMap['white'] || 'a clean background';
+    const lightingValue = (formData.lightingStyle as string) || lightingSettings[0]?.value || 'soft';
+    const backgroundValue = (formData.backgroundType as string) || backgroundSettings[0]?.value || 'white';
+    const lightingDesc = lightingMap[lightingValue] || 'professional studio lighting';
+    const backgroundDesc = backgroundMap[backgroundValue] || 'a clean background';
     const cameraAngleDesc = cameraAngleMap[cameraAngle] || cameraAngleMap['default'] || 'a standard product photography angle';
 
     // Build the prompt using the new structure
