@@ -1966,7 +1966,9 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     console.error('   Error details:', error.message);
     res.status(500).json({
       message: 'Video generation failed',
-      error: error.message
+      error: error.message,
+      details: error.toString(),
+      stack: error.stack
     });
   }
 });

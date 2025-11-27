@@ -28,7 +28,11 @@
       "Bash(tree:*)",
       "Bash(dir:*)",
       "Bash(git remote set-head:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "WebFetch(domain:ai.google.dev)",
+      "WebSearch",
+      "WebFetch(domain:developers.googleblog.com)",
+      "Bash(del \"C:\\Users\\Tretyak\\Desktop\\MINECONT\\CODE\\vcl_lab_01\\components\\shaders\\DitherGlowR3F.tsx\")"
     ],
     "deny": [],
     "ask": []
