@@ -1934,7 +1934,7 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
       prompt: prompt,
       image: {
         inlineData: {
-          data: imageData,
+          bytesBase64Encoded: imageData,
           mimeType: mimeType
         }
       },
