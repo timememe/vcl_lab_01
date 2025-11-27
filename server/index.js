@@ -1929,7 +1929,7 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
 
     // Create video generation operation using imageBytes as string (base64)
-    const operation = await ai.models.generateVideos({
+    let operation = await ai.models.generateVideos({
       model: 'veo-3.1-generate-preview',
       prompt: prompt,
       image: {
