@@ -40,6 +40,21 @@ function runMigrations() {
     console.log('⚙️  Running migration: Adding daily_credit_limit column to users table');
     db.exec('ALTER TABLE users ADD COLUMN daily_credit_limit INTEGER DEFAULT 0');
   }
+
+  // Check if generated_images table has media_type column
+  try {
+    const generatedImagesInfo = db.prepare("PRAGMA table_info(generated_images)").all();
+    const hasMediaType = generatedImagesInfo.some(col => col.name === 'media_type');
+    const hasDuration = generatedImagesInfo.some(col => col.name === 'duration');
+
+    if (!hasMediaType) {
+      console.log('⚙️  Running migration: Adding media_type and duration columns to generated_images table');
+      db.exec('ALTER TABLE generated_images ADD COLUMN media_type TEXT DEFAULT "image"');
+      db.exec('ALTER TABLE generated_images ADD COLUMN duration INTEGER');
+    }
+  } catch (err) {
+    // Table doesn't exist yet, will be created by schema
+  }
 }
 
 runMigrations();
@@ -416,8 +431,8 @@ export const settingsQueriesWithSync = {
 // Generated images operations
 export const generatedImageQueries = {
   create: db.prepare(`
-    INSERT INTO generated_images (user_id, category_id, image_url, thumbnail_url, prompt, metadata, ai_model)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO generated_images (user_id, category_id, image_url, thumbnail_url, prompt, metadata, ai_model, media_type, duration)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   findByUserId: db.prepare(`
     SELECT * FROM generated_images

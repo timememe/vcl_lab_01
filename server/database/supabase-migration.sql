@@ -185,11 +185,13 @@ CREATE TABLE IF NOT EXISTS generated_images (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     category_id TEXT NOT NULL, -- Category of generation (product_photo, collage, etc.)
-    image_url TEXT NOT NULL, -- Path to the generated image
+    image_url TEXT NOT NULL, -- Path to the generated image or video
     thumbnail_url TEXT, -- Optional thumbnail for faster loading
     prompt TEXT, -- The prompt used for generation
     metadata JSONB, -- JSON with generation parameters (lighting, background, model, etc.)
-    ai_model TEXT, -- AI model used (gemini, openai)
+    ai_model TEXT, -- AI model used (gemini, openai, veo)
+    media_type TEXT DEFAULT 'image', -- Type: 'image' or 'video'
+    duration INTEGER, -- Video duration in seconds (null for images)
     is_favorite BOOLEAN DEFAULT false, -- User can mark favorites
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -7,6 +7,8 @@ export interface GeneratedImage {
   prompt?: string;
   metadata?: Record<string, any>;
   ai_model?: string;
+  media_type?: 'image' | 'video';
+  duration?: number;
   is_favorite: boolean;
   created_at: string;
 }
@@ -18,4 +20,6 @@ export interface SaveImagePayload {
   prompt?: string;
   metadata?: Record<string, any>;
   ai_model?: string;
+  media_type?: 'image' | 'video';
+  duration?: number;
 }

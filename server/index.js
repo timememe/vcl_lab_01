@@ -801,15 +801,17 @@ app.get('/api/gallery', authMiddleware, async (req, res) => {
 app.post('/api/gallery', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { category_id, image_url, thumbnail_url, prompt, metadata, ai_model } = req.body;
+    const { category_id, image_url, thumbnail_url, prompt, metadata, ai_model, media_type, duration } = req.body;
 
     if (!category_id || !image_url) {
       return res.status(400).json({ message: 'category_id and image_url are required' });
     }
 
-    console.log(`💾 Saving image to gallery for user ${userId}, category: ${category_id}`);
-    console.log(`   Image URL: ${image_url.substring(0, 50)}...`);
+    const mediaTypeLabel = media_type === 'video' ? 'video' : 'image';
+    console.log(`💾 Saving ${mediaTypeLabel} to gallery for user ${userId}, category: ${category_id}`);
+    console.log(`   URL: ${image_url.substring(0, 50)}...`);
     console.log(`   AI Model: ${ai_model || 'unknown'}`);
+    if (duration) console.log(`   Duration: ${duration}s`);
 
     const result = generatedImageQueriesWithSync.create(
       userId,
@@ -818,7 +820,9 @@ app.post('/api/gallery', authMiddleware, async (req, res) => {
       thumbnail_url || null,
       prompt || null,
       metadata ? JSON.stringify(metadata) : null,
-      ai_model || null
+      ai_model || null,
+      media_type || 'image',
+      duration || null
     );
 
     console.log(`   ✅ Image saved with ID: ${result.lastInsertRowid}`);
@@ -1892,6 +1896,78 @@ app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Gemini generation error:', error);
     res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+});
+
+// ==================== VEO 3.1 VIDEO GENERATION ENDPOINT ====================
+
+app.post('/api/veo/generate', authMiddleware, async (req, res) => {
+  const { prompt, imageBase64, aspectRatio } = req.body || {};
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ message: 'Prompt is required.' });
+  }
+
+  if (!imageBase64) {
+    return res.status(400).json({ message: 'Image is required for video generation.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+
+    console.log('🎬 Generating video with Veo 3.1...');
+    console.log(`   Prompt: ${prompt.substring(0, 100)}...`);
+
+    // Convert base64 to proper format
+    const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
+
+    // Create video generation operation
+    const operation = await ai.models.generateVideos({
+      model: 'veo-3.1-generate-preview',
+      prompt: prompt,
+      image: {
+        inlineData: {
+          data: imageData,
+          mimeType: mimeType
+        }
+      },
+      config: {
+        aspectRatio: aspectRatio || '9:16'
+      }
+    });
+
+    console.log('   ⏳ Video generation started, waiting for completion...');
+
+    // Wait for operation to complete
+    const result = await operation.wait();
+
+    console.log('   ✅ Video generation completed!');
+
+    // Extract video from result
+    if (result.video && result.video.inlineData) {
+      const videoBase64 = `data:${result.video.inlineData.mimeType};base64,${result.video.inlineData.data}`;
+
+      return res.json({
+        video: videoBase64,
+        duration: result.duration || null
+      });
+    }
+
+    return res.status(500).json({ message: 'API did not return a video.' });
+  } catch (error) {
+    console.error('❌ Veo generation error:', error);
+    console.error('   Error details:', error.message);
+    res.status(500).json({
+      message: 'Video generation failed',
+      error: error.message
+    });
   }
 });
 
