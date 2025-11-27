@@ -1928,15 +1928,16 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
 
-    // Create video generation operation
+    // Convert base64 to Buffer
+    const imageBuffer = Buffer.from(imageData, 'base64');
+
+    // Create video generation operation using imageBytes format
     const operation = await ai.models.generateVideos({
       model: 'veo-3.1-generate-preview',
       prompt: prompt,
       image: {
-        inlineData: {
-          data: imageData,
-          mimeType: mimeType
-        }
+        imageBytes: imageBuffer,
+        mimeType: mimeType
       },
       config: {
         aspectRatio: aspectRatio || '9:16'
