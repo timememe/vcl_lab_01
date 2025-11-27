@@ -73,6 +73,8 @@ export const locales: { [key in Locale]: Translations } = {
     button_back_to_home: 'Вернуться на главную',
     button_edit_options: 'Изменить параметры',
     button_regenerate: 'Сгенерировать заново с теми же настройками',
+    placeholder_button_1: 'Кнопка 1',
+    placeholder_button_2: 'Кнопка 2',
     alert_download_failed: 'Не удалось скачать изображение.',
 
     // Loading
@@ -286,6 +288,8 @@ export const locales: { [key in Locale]: Translations } = {
     button_back_to_home: 'Back to Home',
     button_edit_options: 'Edit Options',
     button_regenerate: 'Regenerate with Same Options',
+    placeholder_button_1: 'Button 1',
+    placeholder_button_2: 'Button 2',
     alert_download_failed: 'Failed to download image.',
 
     // Loading
@@ -499,6 +503,8 @@ export const locales: { [key in Locale]: Translations } = {
     button_back_to_home: 'Басты бетке оралу',
     button_edit_options: 'Параметрлерді өзгерту',
     button_regenerate: 'Дәл сол баптаулармен қайта жасау',
+    placeholder_button_1: 'Түйме 1',
+    placeholder_button_2: 'Түйме 2',
     alert_download_failed: 'Суретті жүктеп алу сәтсіз аяқталды.',
 
     // Loading

@@ -98,6 +98,16 @@ const ImageResult: React.FC<ImageResultProps> = ({ images, onBack, onGenerateAga
               <img src={image} alt={`${t('result_image_alt_prefix')} ${index + 1}`} className="w-full h-auto object-cover aspect-square" />
             )}
 
+            {/* Placeholder Buttons */}
+            <div className="grid grid-cols-2 gap-2 p-2 border-t border-gray-200">
+                <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md text-sm font-semibold transition-colors duration-200">
+                    {t('placeholder_button_1')}
+                </button>
+                <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md text-sm font-semibold transition-colors duration-200">
+                    {t('placeholder_button_2')}
+                </button>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex flex-col gap-2 p-2">
               {!generatedVideos[index] && (
