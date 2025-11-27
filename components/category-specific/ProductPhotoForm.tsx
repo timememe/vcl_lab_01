@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Upload, Sparkles, Play, Home, Zap, Image, Type, Settings, Monitor, Loader2, CheckCircle, XCircle, Package } from 'lucide-react';
+import { Camera, Upload, Sparkles, Play, Home, Zap, Image, Type, Settings, Monitor, Loader2, CheckCircle, XCircle, Package, Video } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,6 +7,8 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { useLocalization } from '../../contexts/LocalizationContext';
 import { brandService } from '../../services/brandService';
+import { generateVideoFromImage } from '../../services/veoService';
+import { galleryService } from '../../services/galleryService';
 import type { Category, Brand, Product } from '../../types';
 
 interface ProductPhotoFormProps {
@@ -35,6 +37,8 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
   const [productImagePreview, setProductImagePreview] = React.useState<string | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = React.useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = React.useState<string[]>([]);
+  const [generatedVideos, setGeneratedVideos] = React.useState<Record<number, string>>({});
+  const [isGeneratingVideo, setIsGeneratingVideo] = React.useState<Record<number, boolean>>({});
 
   React.useEffect(() => {
     if (initialData) {
@@ -113,6 +117,50 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
       setPreviewState('preview');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleGenerateVideo = async (imageIndex: number) => {
+    const imageBase64 = generatedImages[imageIndex];
+    if (!imageBase64) return;
+
+    setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: true }));
+
+    try {
+      // Create video prompt based on original prompt
+      const videoPrompt = `Create a dynamic video showcasing the product. ${formData.customRequest || ''}. Keep the product prominently featured with smooth camera movements and professional lighting.`;
+
+      const { video, duration } = await generateVideoFromImage(
+        imageBase64,
+        videoPrompt,
+        formData.aspectRatio as string || '9:16'
+      );
+
+      setGeneratedVideos(prev => ({ ...prev, [imageIndex]: video }));
+
+      // Save to gallery
+      try {
+        await galleryService.saveImage({
+          category_id: category.id,
+          image_url: video,
+          prompt: videoPrompt,
+          metadata: {
+            sourceImage: imageBase64.substring(0, 100),
+            originalPrompt: formData.customRequest,
+            aspectRatio: formData.aspectRatio
+          },
+          ai_model: 'veo',
+          media_type: 'video',
+          duration: duration || undefined
+        });
+      } catch (saveError) {
+        console.error('Failed to save video to gallery:', saveError);
+      }
+    } catch (error) {
+      console.error('Video generation failed:', error);
+      alert('Failed to generate video. Please try again.');
+    } finally {
+      setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: false }));
+    }
   };
 
   const aspectRatios = [
@@ -233,15 +281,70 @@ const ProductPhotoForm: React.FC<ProductPhotoFormProps> = ({
               <h3 className="text-base lg:text-lg font-bold text-gray-800">Generated Results</h3>
               <p className="text-xs lg:text-sm text-gray-600">Your AI product photos are ready!</p>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-3 lg:gap-4 max-w-xs lg:max-w-sm w-full">
               {generatedImages.map((image, index) => (
-                <div key={index} className={`${getAspectRatioClass()} border-2 border-green-200 rounded-lg overflow-hidden`}>
-                  <img 
-                    src={image} 
-                    alt={`Generated result ${index + 1}`} 
-                    className="w-full h-full object-cover"
-                  />
+                <div key={index} className="space-y-2">
+                  {/* Image or Video */}
+                  {generatedVideos[index] ? (
+                    <div className={`${getAspectRatioClass()} border-2 border-purple-200 rounded-lg overflow-hidden bg-black`}>
+                      <video
+                        src={generatedVideos[index]}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className={`${getAspectRatioClass()} border-2 border-green-200 rounded-lg overflow-hidden`}>
+                      <img
+                        src={image}
+                        alt={`Generated result ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {/* Generate Video Button */}
+                  {!generatedVideos[index] && (
+                    <Button
+                      onClick={() => handleGenerateVideo(index)}
+                      disabled={isGeneratingVideo[index]}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      size="sm"
+                    >
+                      {isGeneratingVideo[index] ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating Video...
+                        </>
+                      ) : (
+                        <>
+                          <Video className="w-4 h-4 mr-2" />
+                          Generate Video with Veo 3.1
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Download Video Button */}
+                  {generatedVideos[index] && (
+                    <a
+                      href={generatedVideos[index]}
+                      download={`generated-video-${index + 1}.mp4`}
+                      className="block w-full"
+                    >
+                      <Button
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Download Video
+                      </Button>
+                    </a>
+                  )}
                 </div>
               ))}
             </div>

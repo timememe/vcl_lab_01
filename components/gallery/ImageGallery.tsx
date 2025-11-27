@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image as ImageIcon, Heart, Trash2, Download, Loader2, Grid3x3, Filter } from 'lucide-react';
+import { Image as ImageIcon, Heart, Trash2, Download, Loader2, Grid3x3, Filter, Video as VideoIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { galleryService } from '../../services/galleryService';
 import type { GeneratedImage } from '../../types/gallery';
@@ -149,12 +149,23 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
               key={image.id}
               className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition-all"
             >
-              {/* Image */}
-              <img
-                src={image.thumbnail_url || image.image_url}
-                alt={`Generated ${image.id}`}
-                className="w-full h-full object-cover"
-              />
+              {/* Image or Video */}
+              {image.media_type === 'video' ? (
+                <video
+                  src={image.image_url}
+                  className="w-full h-full object-cover"
+                  muted
+                  loop
+                  onMouseEnter={(e) => e.currentTarget.play()}
+                  onMouseLeave={(e) => e.currentTarget.pause()}
+                />
+              ) : (
+                <img
+                  src={image.thumbnail_url || image.image_url}
+                  alt={`Generated ${image.id}`}
+                  className="w-full h-full object-cover"
+                />
+              )}
 
               {/* Overlay with actions */}
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
@@ -190,8 +201,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
               )}
 
               {/* Category badge */}
-              <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+              <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                {image.media_type === 'video' && <VideoIcon className="w-3 h-3" />}
                 {image.category_id}
+                {image.duration && <span className="text-[10px] opacity-75">({image.duration}s)</span>}
               </div>
             </div>
           ))}
