@@ -1,15 +1,11 @@
 
 
 
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
 
 import { useLocalization } from '../contexts/LocalizationContext';
-
-import DitherGlowR3F from './shaders/DitherGlowR3F';
-
-
 
 const LoginScreen: React.FC = () => {
 
@@ -31,42 +27,6 @@ const LoginScreen: React.FC = () => {
 
   const [localError, setLocalError] = useState<string | null>(null);
 
-
-
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  const [boxRect, setBoxRect] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
-
-
-
-  useLayoutEffect(() => {
-
-    const updateRect = () => {
-
-      if (boxRef.current) {
-
-        const rect = boxRef.current.getBoundingClientRect();
-
-        const y = window.innerHeight - rect.bottom;
-
-        setBoxRect({ x: rect.left, y: y, width: rect.width, height: rect.height });
-
-      }
-
-    };
-
-
-
-    updateRect();
-
-    window.addEventListener('resize', updateRect);
-
-    return () => window.removeEventListener('resize', updateRect);
-
-  }, []);
-
-
-
   const handleSubmit = async (event: React.FormEvent) => {
 
     event.preventDefault();
@@ -85,45 +45,11 @@ const LoginScreen: React.FC = () => {
 
   };
 
+    return (
 
+      <div className="relative min-h-screen bg-white p-6 overflow-hidden">
 
-  const glowColor: [number, number, number] = [0.86, 0.15, 0.15];
-
-
-
-  return (
-
-    <div className="relative min-h-screen bg-white p-6 overflow-hidden">
-
-      {boxRect && (
-
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0 }}>
-
-          <DitherGlowR3F 
-
-            pixelSize1={1}
-
-            pixelSize2={1}
-
-            pixelSize3={1}
-
-            glitchAmount={0.0}
-
-            animate={true}
-
-            boxRect={boxRect}
-
-            glowColor={glowColor}
-
-          />
-
-        </div>
-
-      )}
-
-
-
-      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full">
+        <div className="relative z-10 flex flex-col items-center justify-center w-full h-full">
 
         <div className="text-center mb-6">
 
@@ -131,9 +57,7 @@ const LoginScreen: React.FC = () => {
 
         </div>
 
-
-
-        <div ref={boxRef} className="w-full max-w-md bg-white shadow-xl rounded-2xl border border-red-100 p-8 space-y-6">
+        <div className="w-full max-w-md bg-white shadow-xl rounded-2xl border border-red-100 p-8 space-y-6">
 
           <div className="text-center space-y-2">
 

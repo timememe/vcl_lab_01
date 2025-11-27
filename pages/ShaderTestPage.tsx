@@ -5,69 +5,9 @@
 
 
 
-import React, { useMemo, useState } from 'react';
-
-
-
-import DitherGlowR3F from '../components/shaders/DitherGlowR3F';
-
-
-
-
-
-
+import React, { useState } from 'react';
 
 const ShaderTestPage: React.FC = () => {
-
-
-
-
-
-
-
-  // Create a static, centered box for testing purposes.
-
-
-
-  const boxRect = useMemo(() => {
-
-
-
-    const width = 400;
-
-
-
-    const height = 200;
-
-
-
-    const x = (window.innerWidth - width) / 2;
-
-
-
-    const y = (window.innerHeight - height) / 2;
-
-
-
-    return { x, y, width, height };
-
-
-
-  }, []);
-
-
-
-
-
-
-
-  const glowColor: [number, number, number] = [0.86, 0.15, 0.15];
-
-
-
-
-
-
 
   const [pixelSize1, setPixelSize1] = useState(16);
 
@@ -94,49 +34,7 @@ const ShaderTestPage: React.FC = () => {
 
 
   return (
-
-
-
     <div style={{ background: '#fff', width: '100vw', height: '100vh' }}>
-
-
-
-      <DitherGlowR3F 
-
-
-
-        glitchAmount={glitchAmount}
-
-
-
-        boxRect={boxRect}
-
-
-
-        glowColor={glowColor}
-
-
-
-        pixelSize1={pixelSize1}
-
-
-
-        pixelSize2={pixelSize2}
-
-
-
-        pixelSize3={pixelSize3}
-
-
-
-        animate={animate}
-
-
-
-      />
-
-
-
       <div style={{ position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '10px', borderRadius: '5px', fontFamily: 'sans-serif' }}>
 
 
