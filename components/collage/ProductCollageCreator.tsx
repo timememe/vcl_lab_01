@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, Download, Wand2, Settings, Image as ImageIcon, ToggleLeft, ToggleRight, Camera } from 'lucide-react';
+import { Upload, Download, Wand2, Settings, Image as ImageIcon, ToggleLeft, ToggleRight, Camera, Video, Loader2 } from 'lucide-react';
 import { CollageElement, CollageState } from '../../types/collage';
 import { AIModel, Category, Product } from '../../types';
 import { PRODUCT_COLLAGE_PRESETS, getDefaultProductPreset } from '../../services/productCollagePresets';
@@ -15,6 +15,8 @@ import InteractiveUploadGrid from './InteractiveUploadGrid';
 import LoadingIndicator from '../LoadingIndicator';
 import { settingsService } from '../../services/settingsService';
 import type { Setting } from '../../types/settings';
+import { generateVideoFromImage } from '../../services/veoService';
+import { galleryService } from '../../services/galleryService';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -110,6 +112,55 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
 
   const [activeTab, setActiveTab] = useState<'canvas' | 'background' | 'labels' | 'settings'>('canvas');
   const [customPrompt, setCustomPrompt] = useState('');
+
+  // Video generation state
+  const [generatedVideos, setGeneratedVideos] = useState<Record<number, string>>({});
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState<Record<number, boolean>>({});
+
+  // Video generation handler
+  const handleGenerateVideo = async (imageIndex: number) => {
+    const imageBase64 = generatedImages[imageIndex];
+    if (!imageBase64) return;
+
+    setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: true }));
+
+    try {
+      const videoPrompt = `Create a dynamic product video showcasing the item. ${formData.customRequest || ''}. Use smooth camera movements and professional lighting to highlight the product features.`;
+
+      const { video, duration } = await generateVideoFromImage(
+        imageBase64,
+        videoPrompt,
+        aspectRatio || '9:16'
+      );
+
+      setGeneratedVideos(prev => ({ ...prev, [imageIndex]: video }));
+
+      // Save to gallery
+      try {
+        await galleryService.saveImage({
+          category_id: category.id,
+          image_url: video,
+          prompt: videoPrompt,
+          metadata: {
+            sourceImage: imageBase64.substring(0, 100),
+            formData: Object.fromEntries(
+              Object.entries(formData).filter(([_, v]) => typeof v === 'string')
+            )
+          },
+          ai_model: 'veo',
+          media_type: 'video',
+          duration: duration || undefined
+        });
+      } catch (saveError) {
+        console.error('Failed to save video to gallery:', saveError);
+      }
+    } catch (error) {
+      console.error('Video generation failed:', error);
+      alert('Failed to generate video. Please try again.');
+    } finally {
+      setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: false }));
+    }
+  };
 
   // Traditional form handlers
   const handleTraditionalGenerate = () => {
@@ -564,14 +615,62 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   <p className="text-sm">{error}</p>
                 </div>
               ) : generatedImages.length > 0 ? (
-                <div className="w-full h-full flex flex-wrap justify-center items-center gap-4 p-4 overflow-y-auto">
+                <div className="w-full h-full flex flex-col gap-4 p-4 overflow-y-auto">
                   {generatedImages.map((image, index) => (
-                    <img 
-                      key={index} 
-                      src={image} 
-                      alt={`Generated ${index + 1}`} 
-                      className="rounded-lg shadow-md object-contain max-w-full max-h-[calc(100vh-400px)]" 
-                    />
+                    <div key={index} className="flex flex-col gap-3 bg-white rounded-lg shadow-md p-4">
+                      {/* Image or Video */}
+                      {generatedVideos[index] ? (
+                        <video
+                          src={generatedVideos[index]}
+                          controls
+                          autoPlay
+                          loop
+                          muted
+                          className="w-full h-auto object-contain max-h-[calc(100vh-500px)] rounded-lg bg-black"
+                        />
+                      ) : (
+                        <img
+                          src={image}
+                          alt={`Generated ${index + 1}`}
+                          className="rounded-lg object-contain max-w-full max-h-[calc(100vh-500px)]"
+                        />
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {!generatedVideos[index] && (
+                          <button
+                            onClick={() => handleGenerateVideo(index)}
+                            disabled={isGeneratingVideo[index]}
+                            className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
+                          >
+                            {isGeneratingVideo[index] ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Generating Video...
+                              </>
+                            ) : (
+                              <>
+                                <Video className="w-4 h-4" />
+                                Generate Video (Veo 3.1)
+                              </>
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            const a = document.createElement('a');
+                            a.href = generatedVideos[index] || image;
+                            a.download = `product_${generatedVideos[index] ? 'video' : 'photo'}_${index + 1}.${generatedVideos[index] ? 'mp4' : 'jpeg'}`;
+                            a.click();
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          {generatedVideos[index] ? 'Download Video' : 'Download Image'}
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
