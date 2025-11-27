@@ -1982,23 +1982,44 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
       console.log('   Video data keys:', Object.keys(videoData));
       console.log('   Video object keys:', Object.keys(videoData.video || {}));
 
-      // Video bytes are already in the response
-      if (videoData.video && videoData.video.videoBytes) {
-        const videoBase64 = `data:${videoData.video.mimeType};base64,${videoData.video.videoBytes}`;
+      if (videoData.video) {
+        let videoBase64;
 
-        console.log('   ✅ Video extracted successfully');
-        console.log('   Video size:', videoData.video.videoBytes.length, 'bytes (base64)');
+        // Check if videoBytes is populated
+        if (videoData.video.videoBytes && videoData.video.videoBytes.length > 0) {
+          videoBase64 = `data:${videoData.video.mimeType};base64,${videoData.video.videoBytes}`;
+          console.log('   ✅ Video extracted from inline bytes');
+        }
+        // Otherwise, download from URI
+        else if (videoData.video.uri) {
+          console.log('   📥 Downloading video from URI:', videoData.video.uri);
+
+          try {
+            const fetch = (await import('node-fetch')).default;
+            const videoResponse = await fetch(videoData.video.uri);
+
+            if (!videoResponse.ok) {
+              throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+            }
+
+            const videoBuffer = await videoResponse.buffer();
+            videoBase64 = `data:${videoData.video.mimeType};base64,${videoBuffer.toString('base64')}`;
+
+            console.log('   ✅ Video downloaded successfully');
+            console.log('   Video size:', videoBuffer.length, 'bytes');
+          } catch (downloadError) {
+            console.error('   Error downloading video from URI:', downloadError);
+            throw downloadError;
+          }
+        } else {
+          console.error('   No video bytes or URI available');
+          return res.status(500).json({ message: 'No video data available.' });
+        }
 
         return res.json({
           video: videoBase64,
           duration: videoData.duration || null
         });
-      }
-
-      // Fallback: if video has URI but no bytes, log it
-      if (videoData.video && videoData.video.uri) {
-        console.error('   Video only has URI, no videoBytes:', videoData.video.uri);
-        return res.status(500).json({ message: 'Video only available via URI, not inline bytes.' });
       }
     }
 
