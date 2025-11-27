@@ -1933,8 +1933,10 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
       model: 'veo-3.1-generate-preview',
       prompt: prompt,
       image: {
-        bytesBase64Encoded: imageData,
-        mimeType: mimeType
+        inlineData: {
+          data: imageData,
+          mimeType: mimeType
+        }
       },
       config: {
         aspectRatio: aspectRatio || '9:16'
