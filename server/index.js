@@ -1996,7 +1996,13 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
 
           try {
             const fetch = (await import('node-fetch')).default;
-            const videoResponse = await fetch(videoData.video.uri);
+
+            // Add API key to download request
+            const videoResponse = await fetch(videoData.video.uri, {
+              headers: {
+                'x-goog-api-key': apiKey
+              }
+            });
 
             if (!videoResponse.ok) {
               throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
