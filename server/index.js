@@ -1942,11 +1942,20 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     });
 
     console.log('   ⏳ Video generation started, waiting for completion...');
+    console.log('   Operation type:', typeof operation);
+    console.log('   Operation keys:', Object.keys(operation));
 
-    // Wait for operation to complete
-    const result = await operation.wait();
+    // The operation might already be the result, not a promise
+    let result;
+    if (typeof operation.wait === 'function') {
+      result = await operation.wait();
+    } else {
+      // Operation might already be the result
+      result = operation;
+    }
 
     console.log('   ✅ Video generation completed!');
+    console.log('   Result keys:', Object.keys(result));
 
     // Extract video from result
     if (result.video && result.video.inlineData) {
