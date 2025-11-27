@@ -1945,43 +1945,42 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     console.log('   Operation name:', operation.name);
 
     // Poll the operation until it's done
-    let result;
     let attempts = 0;
-    const maxAttempts = 120; // 10 minutes max (5 sec * 120)
+    const maxAttempts = 72; // 12 minutes max (10 sec * 72)
 
-    while (attempts < maxAttempts) {
+    while (!operation.done && attempts < maxAttempts) {
       try {
-        // Get operation status
-        result = await ai.models.getOperation({
-          name: operation.name
-        });
+        // Wait 10 seconds before polling (recommended by docs)
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        attempts++;
 
-        console.log(`   Polling attempt ${attempts + 1}, done: ${result.done}`);
+        // Get updated operation status
+        operation = await ai.operations.getVideosOperation({ operation });
 
-        if (result.done) {
+        console.log(`   Polling attempt ${attempts}, done: ${operation.done}`);
+
+        if (operation.done) {
           console.log('   ✅ Video generation completed!');
           break;
         }
-
-        // Wait 5 seconds before next poll
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        attempts++;
       } catch (pollError) {
         console.error('   Error polling operation:', pollError);
         throw pollError;
       }
     }
 
-    if (!result || !result.done) {
-      return res.status(500).json({ message: 'Video generation timed out.' });
+    if (!operation.done) {
+      return res.status(500).json({ message: 'Video generation timed out after 12 minutes.' });
     }
 
     // Extract video from result
-    if (result.response && result.response.generatedVideos && result.response.generatedVideos.length > 0) {
-      const videoData = result.response.generatedVideos[0];
+    console.log('   Response keys:', Object.keys(operation.response || {}));
 
-      if (videoData.video && videoData.video.inlineData) {
-        const videoBase64 = `data:${videoData.video.inlineData.mimeType};base64,${videoData.video.inlineData.data}`;
+    if (operation.response && operation.response.generated_videos && operation.response.generated_videos.length > 0) {
+      const videoData = operation.response.generated_videos[0];
+
+      if (videoData.video && videoData.video.inline_data) {
+        const videoBase64 = `data:${videoData.video.inline_data.mime_type};base64,${videoData.video.inline_data.data}`;
 
         return res.json({
           video: videoBase64,
@@ -1990,7 +1989,7 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
       }
     }
 
-    console.error('   Result structure:', JSON.stringify(result, null, 2));
+    console.error('   Full operation structure:', JSON.stringify(operation, null, 2));
     return res.status(500).json({ message: 'API did not return a video in expected format.' });
   } catch (error) {
     console.error('❌ Veo generation error:', error);
