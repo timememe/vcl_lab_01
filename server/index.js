@@ -2054,6 +2054,164 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
   }
 });
 
+// ==================== TEST ENDPOINTS (NO AUTH) ====================
+
+app.post('/api/test/gemini/generate', async (req, res) => {
+  const { parts, aspectRatio } = req.body || {};
+
+  if (!parts || !Array.isArray(parts)) {
+    return res.status(400).json({ message: 'Parts array is required.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    const { GoogleGenAI, Modality } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+
+    const contents = { parts };
+    const config = {
+      responseModalities: [Modality.IMAGE, Modality.TEXT],
+      ...(aspectRatio && { imageConfig: { aspectRatio } })
+    };
+
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents,
+        config
+      });
+      console.log('✅ [TEST] Using Gemini 3 Pro Image');
+    } catch (modelError) {
+      console.log('⚠️  [TEST] Gemini 3 Pro not available, trying 2.5 Flash Image...');
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents,
+          config
+        });
+        console.log('✅ [TEST] Using Gemini 2.5 Flash Image');
+      } catch (fallbackError) {
+        console.log('⚠️  [TEST] Gemini 2.5 also failed, trying 2.0 Preview...');
+        response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash-preview-image-generation',
+          contents,
+          config
+        });
+        console.log('✅ [TEST] Using Gemini 2.0 Flash Preview');
+      }
+    }
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return res.json({
+          image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
+        });
+      }
+    }
+
+    return res.status(500).json({ message: 'API did not return an image.' });
+  } catch (error) {
+    console.error('[TEST] Gemini generation error:', error);
+    res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+});
+
+app.post('/api/test/veo/generate', async (req, res) => {
+  const { prompt, imageBase64, aspectRatio } = req.body || {};
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ message: 'Prompt is required.' });
+  }
+
+  if (!imageBase64) {
+    return res.status(400).json({ message: 'Image is required for video generation.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  }
+
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+
+    console.log('🎬 [TEST] Generating video with Veo 3.1...');
+
+    const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
+
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-generate-preview',
+      prompt: prompt,
+      image: {
+        imageBytes: imageData,
+        mimeType: mimeType
+      },
+      config: {
+        aspectRatio: aspectRatio || '16:9'
+      }
+    });
+
+    console.log('   ⏳ [TEST] Video generation started...');
+
+    let attempts = 0;
+    const maxAttempts = 72;
+
+    while (!operation.done && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      attempts++;
+      operation = await ai.operations.getVideosOperation({ operation });
+      console.log(`   [TEST] Polling attempt ${attempts}, done: ${operation.done}`);
+      if (operation.done) break;
+    }
+
+    if (!operation.done) {
+      return res.status(500).json({ message: 'Video generation timed out.' });
+    }
+
+    if (operation.response && operation.response.raiMediaFilteredCount > 0) {
+      const reasons = operation.response.raiMediaFilteredReasons || ['Content filtered'];
+      return res.status(400).json({ message: 'Content filtered', reasons });
+    }
+
+    if (operation.response?.generatedVideos?.length > 0) {
+      const videoData = operation.response.generatedVideos[0];
+      if (videoData.video) {
+        const videoMimeType = videoData.video.mimeType || 'video/mp4';
+        let videoBase64;
+
+        if (videoData.video.videoBytes?.length > 0) {
+          videoBase64 = `data:${videoMimeType};base64,${videoData.video.videoBytes}`;
+        } else if (videoData.video.uri) {
+          const fetch = (await import('node-fetch')).default;
+          const videoResponse = await fetch(videoData.video.uri, {
+            headers: { 'x-goog-api-key': apiKey }
+          });
+          const videoBuffer = await videoResponse.buffer();
+          videoBase64 = `data:${videoMimeType};base64,${videoBuffer.toString('base64')}`;
+        }
+
+        if (videoBase64) {
+          return res.json({ video: videoBase64, duration: videoData.duration || null });
+        }
+      }
+    }
+
+    return res.status(500).json({ message: 'No video returned.' });
+  } catch (error) {
+    console.error('[TEST] Veo generation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ==================== END TEST ENDPOINTS ====================
+
 app.post('/api/openai/generate', authMiddleware, async (req, res) => {
   const { prompt, imageBase64, mode = 'edit' } = req.body || {};
 

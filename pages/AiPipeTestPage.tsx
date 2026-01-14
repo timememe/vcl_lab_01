@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { apiFetch } from '../services/apiClient';
+
+const API_BASE = 'http://localhost:4000';
 
 const fileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
   return new Promise((resolve, reject) => {
@@ -71,10 +72,18 @@ The result should look like someone brought a child's drawing into the real worl
         { text: imagePrompt }
       ];
 
-      const response = await apiFetch('/api/gemini/generate', {
+      const res = await fetch(`${API_BASE}/api/test/gemini/generate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parts })
-      }) as { image: string };
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Request failed');
+      }
+
+      const response = await res.json() as { image: string };
 
       if (!response.image) {
         throw new Error('API did not return an image');
@@ -101,14 +110,22 @@ The result should look like someone brought a child's drawing into the real worl
         ? animatedImage.split(',')[1]
         : animatedImage;
 
-      const response = await apiFetch('/api/veo/generate', {
+      const res = await fetch(`${API_BASE}/api/test/veo/generate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: videoPrompt,
           imageBase64: base64Data,
           aspectRatio: '16:9'
         })
-      }) as { video: string; duration: number | null };
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Request failed');
+      }
+
+      const response = await res.json() as { video: string; duration: number | null };
 
       if (!response.video) {
         throw new Error('API did not return a video');
