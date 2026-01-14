@@ -2057,10 +2057,23 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
 // ==================== TEST ENDPOINTS (NO AUTH) ====================
 
 app.post('/api/test/gemini/generate', async (req, res) => {
+  // Disable caching
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
   const { parts, aspectRatio } = req.body || {};
 
   if (!parts || !Array.isArray(parts)) {
     return res.status(400).json({ message: 'Parts array is required.' });
+  }
+
+  // Log incoming request details
+  const imagePartIndex = parts.findIndex(p => p.inlineData);
+  if (imagePartIndex !== -1) {
+    const imgData = parts[imagePartIndex].inlineData;
+    console.log(`📸 [TEST] Incoming image: ${imgData.mimeType}, size: ${imgData.data?.length || 0} chars`);
+    console.log(`   First 50 chars: ${imgData.data?.substring(0, 50)}`);
   }
 
   const apiKey = process.env.GEMINI_API_KEY;

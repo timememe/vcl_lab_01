@@ -74,6 +74,12 @@ The result should look like someone brought a child's drawing into the real worl
     try {
       const imagePart = await fileToBase64(referenceFile);
 
+      console.log('📤 Sending image:', {
+        mimeType: imagePart.mimeType,
+        size: imagePart.data.length,
+        first50: imagePart.data.substring(0, 50)
+      });
+
       const parts = [
         { inlineData: imagePart },
         { text: imagePrompt }
