@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 
-const API_BASE = 'http://localhost:4000';
+const getApiBase = (): string => {
+  if (typeof window === 'undefined') return '';
+  const origin = window.location.origin;
+  const isLocalHost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  return isLocalHost ? 'http://localhost:4000' : '';
+};
+
+const API_BASE = getApiBase();
 
 const fileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
   return new Promise((resolve, reject) => {
