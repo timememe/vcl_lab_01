@@ -1976,6 +1976,16 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
     // Extract video from result
     console.log('   Response keys:', Object.keys(operation.response || {}));
 
+    // Check for RAI filtering
+    if (operation.response && operation.response.raiMediaFilteredCount > 0) {
+      const reasons = operation.response.raiMediaFilteredReasons || ['Content filtered by safety system'];
+      console.error('   ⚠️ Video filtered by RAI:', reasons);
+      return res.status(400).json({
+        message: 'Video generation blocked by content filter',
+        reasons: reasons
+      });
+    }
+
     if (operation.response && operation.response.generatedVideos && operation.response.generatedVideos.length > 0) {
       const videoData = operation.response.generatedVideos[0];
 

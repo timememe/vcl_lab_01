@@ -123,8 +123,13 @@ The result should look like someone brought a child's drawing into the real worl
       console.log('Video prefix:', videoData.substring(0, 50));
 
       setVideoUrl(videoData);
-    } catch (err) {
-      setVideoError(err instanceof Error ? err.message : 'Failed to generate video');
+    } catch (err: any) {
+      const errorMsg = err?.reasons
+        ? `Content filtered: ${err.reasons.join(', ')}`
+        : err instanceof Error
+          ? err.message
+          : 'Failed to generate video';
+      setVideoError(errorMsg);
     } finally {
       setIsGeneratingVideo(false);
     }
