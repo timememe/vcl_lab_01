@@ -23,7 +23,16 @@ const AiPipeTestPage: React.FC = () => {
   const [animatedImage, setAnimatedImage] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [imagePrompt, setImagePrompt] = useState('Transform this child drawing into a vibrant, animated illustration while preserving the original style and charm. Keep all elements recognizable but add life and energy to the scene.');
+  const [imagePrompt, setImagePrompt] = useState(`Transform this child's drawing into a photorealistic scene while strictly preserving the original naive composition, proportions, and contours:
+
+Maintain the exact shapes and silhouettes from the child's drawing (the handprint lion, handprint giraffe, simplified trees)
+Keep the simplified, childlike anatomy - don't correct proportions or make animals anatomically accurate
+Preserve the flat, frontal composition and naive perspective
+Add photorealistic textures, lighting, and details ONLY within the existing shapes (realistic fur, skin texture, grass blades, tree bark)
+Keep the warm, vibrant color palette from the original
+Maintain the whimsical, innocent charm - this should feel like a child's imagination come to life, not a nature documentary
+
+The result should look like someone brought a child's drawing into the real world exactly as they drew it - with all its charming imperfections and simplified forms - but with realistic materials and lighting.`);
 
   // Panel 3: Video
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -109,6 +118,9 @@ const AiPipeTestPage: React.FC = () => {
       const videoData = response.video.startsWith('data:')
         ? response.video
         : `data:video/mp4;base64,${response.video}`;
+
+      console.log('Video received, length:', videoData.length);
+      console.log('Video prefix:', videoData.substring(0, 50));
 
       setVideoUrl(videoData);
     } catch (err) {
@@ -230,9 +242,13 @@ const AiPipeTestPage: React.FC = () => {
             )}
             {videoUrl && !isGeneratingVideo && (
               <video
+                key={videoUrl.substring(0, 100)}
                 src={videoUrl}
                 controls
+                autoPlay
                 className="max-w-full max-h-full rounded-lg"
+                onLoadedData={() => console.log('Video loaded successfully')}
+                onError={(e) => console.error('Video error:', e)}
               />
             )}
             {!videoUrl && !isGeneratingVideo && (
