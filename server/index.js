@@ -1996,8 +1996,9 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
         let videoBase64;
 
         // Check if videoBytes is populated
+        const videoMimeType = videoData.video.mimeType || 'video/mp4';
         if (videoData.video.videoBytes && videoData.video.videoBytes.length > 0) {
-          videoBase64 = `data:${videoData.video.mimeType};base64,${videoData.video.videoBytes}`;
+          videoBase64 = `data:${videoMimeType};base64,${videoData.video.videoBytes}`;
           console.log('   ✅ Video extracted from inline bytes');
         }
         // Otherwise, download from URI
@@ -2019,7 +2020,7 @@ app.post('/api/veo/generate', authMiddleware, async (req, res) => {
             }
 
             const videoBuffer = await videoResponse.buffer();
-            videoBase64 = `data:${videoData.video.mimeType};base64,${videoBuffer.toString('base64')}`;
+            videoBase64 = `data:${videoMimeType};base64,${videoBuffer.toString('base64')}`;
 
             console.log('   ✅ Video downloaded successfully');
             console.log('   Video size:', videoBuffer.length, 'bytes');

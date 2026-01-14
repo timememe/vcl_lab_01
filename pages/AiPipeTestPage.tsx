@@ -253,7 +253,14 @@ The result should look like someone brought a child's drawing into the real worl
                 autoPlay
                 className="max-w-full max-h-full rounded-lg"
                 onLoadedData={() => console.log('Video loaded successfully')}
-                onError={(e) => console.error('Video error:', e)}
+                onError={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  console.error('Video error:', e);
+                  console.error('Video error code:', video.error?.code);
+                  console.error('Video error message:', video.error?.message);
+                  console.error('Video src length:', video.src?.length);
+                  console.error('Video src prefix:', video.src?.substring(0, 100));
+                }}
               />
             )}
             {!videoUrl && !isGeneratingVideo && (
