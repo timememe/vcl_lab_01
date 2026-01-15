@@ -2154,20 +2154,22 @@ app.post('/api/test/veo/generate', async (req, res) => {
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
 
-    console.log('🎬 [TEST] Generating video with Veo 3.1...');
+    console.log('🎬 [TEST] Generating video with Veo 3.1 Fast (4s, no audio)...');
 
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
 
     let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-generate-preview',
+      model: 'veo-3.1-fast-generate-preview',
       prompt: prompt,
       image: {
         imageBytes: imageData,
         mimeType: mimeType
       },
       config: {
-        aspectRatio: aspectRatio || '16:9'
+        aspectRatio: aspectRatio || '16:9',
+        durationSeconds: 4,
+        generateAudio: false
       }
     });
 
