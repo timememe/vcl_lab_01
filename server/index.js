@@ -2227,6 +2227,131 @@ app.post('/api/test/veo/generate', async (req, res) => {
 
 // ==================== END TEST ENDPOINTS ====================
 
+// ==================== VERTEX AI ENDPOINTS (NO AUTH, WITH generateAudio control) ====================
+
+app.post('/api/vertex/veo/generate', async (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+  const { prompt, imageBase64, aspectRatio, generateAudio = false } = req.body || {};
+
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ message: 'Prompt is required.' });
+  }
+
+  if (!imageBase64) {
+    return res.status(400).json({ message: 'Image is required for video generation.' });
+  }
+
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+
+  if (!projectId) {
+    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID is not configured.' });
+  }
+
+  if (!credentialsJson) {
+    return res.status(500).json({ message: 'GOOGLE_APPLICATION_CREDENTIALS_JSON is not configured.' });
+  }
+
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const fs = await import('fs');
+    const os = await import('os');
+    const path = await import('path');
+
+    // Write credentials to temp file for ADC
+    const tempCredPath = path.join(os.tmpdir(), 'gcp-credentials.json');
+    fs.writeFileSync(tempCredPath, credentialsJson);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredPath;
+
+    // Use @google/genai with vertexai: true
+    const ai = new GoogleGenAI({
+      vertexai: true,
+      project: projectId,
+      location: location
+    });
+
+    console.log('🎬 [VERTEX] Generating video with Veo 3.1 Fast (4s, generateAudio:', generateAudio, ')...');
+
+    const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
+
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-001',
+      prompt: prompt,
+      image: {
+        imageBytes: imageData,
+        mimeType: mimeType
+      },
+      config: {
+        aspectRatio: aspectRatio || '16:9',
+        durationSeconds: 4,
+        generateAudio: generateAudio
+      }
+    });
+
+    console.log('   ⏳ [VERTEX] Video generation started...');
+    console.log('   [VERTEX] Operation name:', operation.name);
+
+    // Poll until done
+    let attempts = 0;
+    const maxAttempts = 72;
+
+    while (!operation.done && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      attempts++;
+      operation = await ai.operations.getVideosOperation({ operation });
+      console.log(`   [VERTEX] Polling attempt ${attempts}, done: ${operation.done}`);
+      if (operation.done) break;
+    }
+
+    if (!operation.done) {
+      return res.status(500).json({ message: 'Video generation timed out.' });
+    }
+
+    // Check for RAI filtering
+    if (operation.response?.raiMediaFilteredCount > 0) {
+      const reasons = operation.response.raiMediaFilteredReasons || ['Content filtered'];
+      return res.status(400).json({ message: 'Content filtered', reasons });
+    }
+
+    // Extract video
+    if (operation.response?.generatedVideos?.length > 0) {
+      const videoData = operation.response.generatedVideos[0];
+      if (videoData.video) {
+        const videoMimeType = videoData.video.mimeType || 'video/mp4';
+        let videoBase64;
+
+        if (videoData.video.videoBytes?.length > 0) {
+          videoBase64 = `data:${videoMimeType};base64,${videoData.video.videoBytes}`;
+        } else if (videoData.video.uri) {
+          // Download from GCS URI if needed
+          console.log('   [VERTEX] Video URI:', videoData.video.uri);
+          return res.status(500).json({ message: 'Video returned as URI, not bytes. Configure outputGcsUri or check response.' });
+        }
+
+        if (videoBase64) {
+          console.log('   [VERTEX] ✅ Video extracted');
+          return res.json({ video: videoBase64, duration: videoData.duration || 4 });
+        }
+      }
+    }
+
+    console.error('   [VERTEX] Full response:', JSON.stringify(operation, null, 2));
+    return res.status(500).json({ message: 'No video returned from Vertex AI.' });
+
+  } catch (error) {
+    console.error('[VERTEX] Veo generation error:', error);
+    res.status(500).json({
+      message: error.message,
+      details: error.toString()
+    });
+  }
+});
+
+// ==================== END VERTEX AI ENDPOINTS ====================
+
 app.post('/api/openai/generate', authMiddleware, async (req, res) => {
   const { prompt, imageBase64, mode = 'edit' } = req.body || {};
 

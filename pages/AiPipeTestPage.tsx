@@ -48,6 +48,9 @@ The result should look like someone brought a child's drawing into the real worl
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('Animate this illustration with gentle, playful movements. Add subtle animations like floating elements, swaying motion, and soft breathing effects to bring the scene to life.');
 
+  // Video API selection
+  const [videoApi, setVideoApi] = useState<'gemini' | 'vertex'>('gemini');
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -127,14 +130,28 @@ The result should look like someone brought a child's drawing into the real worl
         ? animatedImage.split(',')[1]
         : animatedImage;
 
-      const res = await fetch(`${API_BASE}/api/test/veo/generate`, {
+      // Choose endpoint based on selected API
+      const endpoint = videoApi === 'vertex'
+        ? `${API_BASE}/api/vertex/veo/generate`
+        : `${API_BASE}/api/test/veo/generate`;
+
+      const body = videoApi === 'vertex'
+        ? {
+            prompt: videoPrompt,
+            imageBase64: base64Data,
+            aspectRatio: '16:9',
+            generateAudio: false  // Vertex AI supports this
+          }
+        : {
+            prompt: videoPrompt,
+            imageBase64: base64Data,
+            aspectRatio: '16:9'
+          };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: videoPrompt,
-          imageBase64: base64Data,
-          aspectRatio: '16:9'
-        })
+        body: JSON.stringify(body)
       });
 
       if (!res.ok) {
@@ -250,7 +267,31 @@ The result should look like someone brought a child's drawing into the real worl
 
         {/* Panel 3: Video */}
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 flex flex-col">
-          <h2 className="text-white text-lg font-semibold mb-4">3. Video (Veo 3.1)</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white text-lg font-semibold">3. Video (Veo 3.1)</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setVideoApi('gemini')}
+                className={`px-3 py-1 text-xs rounded-md transition ${
+                  videoApi === 'gemini'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Gemini API
+              </button>
+              <button
+                onClick={() => setVideoApi('vertex')}
+                className={`px-3 py-1 text-xs rounded-md transition ${
+                  videoApi === 'vertex'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Vertex AI (no audio)
+              </button>
+            </div>
+          </div>
 
           <div className="mb-4">
             <textarea
