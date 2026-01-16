@@ -2086,8 +2086,14 @@ app.post('/api/test/gemini/generate', async (req, res) => {
     const ai = new GoogleGenAI({ apiKey });
 
     const contents = { parts };
+
+    // Use random seed to prevent Gemini API caching
+    const randomSeed = Math.floor(Math.random() * 2147483647);
+    console.log(`🎲 [TEST] Using random seed: ${randomSeed} to prevent caching`);
+
     const config = {
       responseModalities: [Modality.IMAGE, Modality.TEXT],
+      seed: randomSeed,
       ...(aspectRatio && { imageConfig: { aspectRatio } })
     };
 
@@ -2221,6 +2227,19 @@ app.post('/api/test/veo/generate', async (req, res) => {
     return res.status(500).json({ message: 'No video returned.' });
   } catch (error) {
     console.error('[TEST] Veo generation error:', error);
+
+    // Check for safety filter errors (face/person detection)
+    const errorMessage = error.message || '';
+    if (errorMessage.includes('person/face generation') ||
+        errorMessage.includes('safety settings') ||
+        errorMessage.includes('blocked')) {
+      return res.status(400).json({
+        message: 'Image blocked by safety filter: faces/people detected. Try with a different image.',
+        reasons: ['person_face_detected'],
+        isSafetyFilter: true
+      });
+    }
+
     res.status(500).json({ message: error.message });
   }
 });
@@ -2343,6 +2362,19 @@ app.post('/api/vertex/veo/generate', async (req, res) => {
 
   } catch (error) {
     console.error('[VERTEX] Veo generation error:', error);
+
+    // Check for safety filter errors (face/person detection)
+    const errorMessage = error.message || '';
+    if (errorMessage.includes('person/face generation') ||
+        errorMessage.includes('safety settings') ||
+        errorMessage.includes('blocked')) {
+      return res.status(400).json({
+        message: 'Image blocked by safety filter: faces/people detected. Try with a different image.',
+        reasons: ['person_face_detected'],
+        isSafetyFilter: true
+      });
+    }
+
     res.status(500).json({
       message: error.message,
       details: error.toString()

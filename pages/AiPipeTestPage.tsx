@@ -175,11 +175,21 @@ The result should look like someone brought a child's drawing into the real worl
 
       setVideoUrl(videoData);
     } catch (err: any) {
-      const errorMsg = err?.reasons
-        ? `Content filtered: ${err.reasons.join(', ')}`
-        : err instanceof Error
-          ? err.message
-          : 'Failed to generate video';
+      let errorMsg = 'Failed to generate video';
+
+      // Handle JSON error response from server
+      if (err?.message) {
+        if (err.message.includes('safety filter') ||
+            err.message.includes('person/face') ||
+            err.message.includes('blocked')) {
+          errorMsg = '⚠️ Image blocked: faces/people detected by safety filter. Try with a different image without people.';
+        } else if (err.reasons) {
+          errorMsg = `Content filtered: ${err.reasons.join(', ')}`;
+        } else {
+          errorMsg = err.message;
+        }
+      }
+
       setVideoError(errorMsg);
     } finally {
       setIsGeneratingVideo(false);
