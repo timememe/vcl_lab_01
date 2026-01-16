@@ -83,9 +83,9 @@ The result should look like someone brought a child's drawing into the real worl
         first50: imagePart.data.substring(0, 50)
       });
 
-      // Add unique ID to prevent Gemini API caching
+      // Add unique ID at the START to prevent Gemini API prefix-based caching
       const uniqueId = `[REQ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}]`;
-      const promptWithId = `${imagePrompt}\n\n${uniqueId}`;
+      const promptWithId = `${uniqueId}\n\n${imagePrompt}`;
 
       const parts = [
         { inlineData: imagePart },
