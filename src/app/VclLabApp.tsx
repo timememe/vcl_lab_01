@@ -1,31 +1,27 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Category, AIModel } from '@/types';
 import type { UsageRecord } from '@/types/usage';
 import { CATEGORIES } from '@/features/generator/constants';
-import CategorySelector from '@/features/generator/CategorySelector';
 import CategorySpecificGenerator from '@/features/generator/CategorySpecificGenerator';
-import ImageResult from '@/features/generator/ImageResult';
 import LoadingIndicator from '@/components/shared/LoadingIndicator';
-import CollageCreator from '@/features/collage/CollageCreator';
 import { generateImages } from '@/features/generator/services/aiService';
 import { useLocalization } from '@/i18n/LocalizationContext';
 import { useAuth } from '@/features/auth/AuthContext';
 import LoginScreen from '@/features/auth/LoginScreen';
 import AdminDashboard from '@/features/admin/AdminDashboard';
-import SoraVideoGenerator from '@/features/video/SoraVideoGenerator';
 import ImageGallery from '@/features/gallery/ImageGallery';
 import { fetchUsage } from '@/features/admin/services/usageService';
 import { galleryService } from '@/features/gallery/galleryService';
 
+const defaultCategory = CATEGORIES[0];
+
 const VclLabApp: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<string>('category');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [lastGenerationData, setLastGenerationData] = useState<Record<string, string | File> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<AIModel>('openai');
-  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'sora' | 'gallery'>('generator');
+  const [selectedModel] = useState<AIModel>('gemini');
+  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'gallery'>('generator');
   const [usageSnapshot, setUsageSnapshot] = useState<UsageRecord | null>(null);
   const { t, setLocale, locale } = useLocalization();
   const translate = useCallback((key: string, fallback: string) => {
@@ -58,8 +54,6 @@ const VclLabApp: React.FC = () => {
 
   useEffect(() => {
     if (!user) {
-      setCurrentStep('category');
-      setSelectedCategory(null);
       setGeneratedImages([]);
       setLastGenerationData(null);
       setError(null);
@@ -68,77 +62,49 @@ const VclLabApp: React.FC = () => {
     }
   }, [user]);
 
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category);
-    setCurrentStep('generator');
-    setError(null);
-  };
-
   const handleGenerate = async (formData: Record<string, string | File>) => {
-    if (!selectedCategory) return;
-
-    const modelToUse = isAdmin ? selectedModel : 'gemini';
-
     setIsGenerating(true);
     setGeneratedImages([]);
     setError(null);
     setLastGenerationData(formData);
 
     try {
-      const images = await generateImages(modelToUse, selectedCategory, formData);
+      const images = await generateImages(selectedModel, defaultCategory, formData);
       setGeneratedImages(images);
-      setCurrentStep('generator'); // Stay on the generator screen
       await refreshUsage();
 
-      // Save each generated image to gallery
       for (const imageUrl of images) {
         try {
           await galleryService.saveImage({
-            category_id: selectedCategory.id,
+            category_id: defaultCategory.id,
             image_url: imageUrl,
             prompt: typeof formData.customPrompt === 'string' ? formData.customPrompt : undefined,
             metadata: {
-              model: modelToUse,
-              category: selectedCategory.id,
+              model: selectedModel,
+              category: defaultCategory.id,
               formData: Object.fromEntries(
                 Object.entries(formData).filter(([_, v]) => typeof v === 'string')
               )
             },
-            ai_model: modelToUse
+            ai_model: selectedModel
           });
         } catch (saveError) {
           console.error('Failed to save image to gallery:', saveError);
-          // Don't fail the whole generation if gallery save fails
         }
       }
     } catch (err) {
       console.error(err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(`${t('error_generation_failed')} ${errorMessage}`);
-      setCurrentStep('generator');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleBackToCategories = () => {
-    setCurrentStep('category');
-    setSelectedCategory(null);
+  const handleReset = () => {
     setGeneratedImages([]);
     setLastGenerationData(null);
     setError(null);
-  };
-
-  const handleBackToGenerator = () => {
-    setCurrentStep('generator');
-    setGeneratedImages([]);
-    setError(null);
-  };
-
-  const handleGenerateAgain = () => {
-    if (lastGenerationData) {
-      void handleGenerate(lastGenerationData);
-    }
   };
 
   const renderMainContent = () => {
@@ -159,54 +125,18 @@ const VclLabApp: React.FC = () => {
       );
     }
 
-    if (activeView === 'sora') {
-      // Only admins can access Sora
-      if (!isAdmin) {
-        setActiveView('generator');
-        return null;
-      }
-      return (
-        <SoraVideoGenerator
-          onBack={() => setActiveView('generator')}
-        />
-      );
-    }
-
-    switch (currentStep) {
-      case 'category':
-        return <CategorySelector categories={CATEGORIES} onSelect={handleCategorySelect} />;
-      case 'generator':
-        if (selectedCategory) {
-          if (selectedCategory.id === 'collage') {
-            return (
-              <CollageCreator
-                selectedModel={selectedModel}
-                onGenerate={(images) => {
-                  setGeneratedImages(images);
-                  setCurrentStep('result');
-                  void refreshUsage();
-                }}
-                onBack={handleBackToCategories}
-              />
-            );
-          }
-          return (
-            <CategorySpecificGenerator
-              category={selectedCategory}
-              selectedModel={selectedModel}
-              onGenerate={handleGenerate}
-              onBack={handleBackToCategories}
-              error={error}
-              isGenerating={isGenerating}
-              generatedImages={generatedImages}
-              initialData={lastGenerationData}
-            />
-          );
-        }
-        return null;
-      default:
-        return <CategorySelector categories={CATEGORIES} onSelect={handleCategorySelect} />;
-    }
+    return (
+      <CategorySpecificGenerator
+        category={defaultCategory}
+        selectedModel={selectedModel}
+        onGenerate={handleGenerate}
+        onBack={handleReset}
+        error={error}
+        isGenerating={isGenerating}
+        generatedImages={generatedImages}
+        initialData={lastGenerationData}
+      />
+    );
   };
 
   if (!user) {
@@ -234,7 +164,7 @@ const VclLabApp: React.FC = () => {
               </span>
             )}
           </div>
-          <div onClick={handleBackToCategories} className="cursor-pointer inline-block group text-center mx-auto" title={t('tooltip_go_home')}>
+          <div onClick={handleReset} className="cursor-pointer inline-block group text-center mx-auto" title={t('tooltip_go_home')}>
             <img
               src="/logo.png"
               alt="VCL Logo"
@@ -265,22 +195,6 @@ const VclLabApp: React.FC = () => {
                 KK
               </button>
             </div>
-            {isAdmin && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setSelectedModel('gemini')}
-                  className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'gemini' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
-                >
-                  Gemini
-                </button>
-                <button
-                  onClick={() => setSelectedModel('openai')}
-                  className={`px-3 py-1 text-xs rounded-md ${selectedModel === 'openai' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}
-                >
-                  GPT-Image-1
-                </button>
-              </div>
-            )}
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setActiveView(activeView === 'gallery' ? 'generator' : 'gallery')}
@@ -288,14 +202,6 @@ const VclLabApp: React.FC = () => {
               >
                 {translate('gallery_button', 'My Gallery')}
               </button>
-              {isAdmin && (
-                <button
-                  onClick={() => setActiveView(activeView === 'sora' ? 'generator' : 'sora')}
-                  className={`px-3 py-1 text-xs rounded-md ${activeView === 'sora' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
-                >
-                  {translate('sora_open_button', 'Sora video')}
-                </button>
-              )}
               {isAdmin && activeView !== 'admin' && (
                 <button
                   onClick={() => setActiveView('admin')}
@@ -336,7 +242,3 @@ const VclLabApp: React.FC = () => {
 };
 
 export default VclLabApp;
-
-
-
-
