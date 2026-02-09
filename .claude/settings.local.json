@@ -35,7 +35,8 @@
       "Bash(del \"C:\\Users\\Tretyak\\Desktop\\MINECONT\\CODE\\vcl_lab_01\\components\\shaders\\DitherGlowR3F.tsx\")",
       "WebFetch(domain:docs.cloud.google.com)",
       "Bash(npm show:*)",
-      "Bash(xcopy:*)"
+      "Bash(xcopy:*)",
+      "Bash(git status:*)"
     ],
     "deny": [],
     "ask": []
