@@ -11,20 +11,13 @@
     "preview": "vite preview",
     "start": "NODE_ENV=production node server/index.js",
     "start:api": "node server/index.js",
-    "server": "node server/index.js",
-    "migrate:settings": "node server/database/migrate-settings-to-supabase.js"
+    "server": "node server/index.js"
   },
   "dependencies": {
-    "@google-cloud/vertexai": "^1.10.0",
     "@google/genai": "^1.36.0",
-    "@radix-ui/react-icons": "^1.3.2",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
-    "@react-three/drei": "^10.7.6",
-    "@react-three/fiber": "^9.4.0",
-    "@supabase/supabase-js": "^2.75.0",
-    "@types/three": "^0.181.0",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.4.1",
     "class-variance-authority": "^0.7.1",
@@ -38,8 +31,7 @@
     "react-dom": "^19.1.1",
     "react-router-dom": "^6.30.0",
     "sharp": "^0.33.4",
-    "tailwind-merge": "^3.3.1",
-    "three": "^0.181.0"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",
