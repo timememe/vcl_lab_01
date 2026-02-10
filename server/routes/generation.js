@@ -31,24 +31,16 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     let response;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents,
         config
       });
     } catch (_modelError) {
-      try {
-        response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents,
-          config
-        });
-      } catch (_fallbackError) {
-        response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash-preview-image-generation',
-          contents,
-          config
-        });
-      }
+      response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents,
+        config
+      });
     }
 
     for (const part of response.candidates[0].content.parts) {
