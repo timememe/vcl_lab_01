@@ -21,11 +21,11 @@ const LoadingIndicator: React.FC = () => {
     }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center bg-white p-10 rounded-2xl shadow-lg border border-gray-200" style={{ minHeight: '300px', minWidth: '350px'}}>
+    <div className="flex flex-col items-center justify-center bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full">
       <img
         src="/load_dombra.gif"
         alt="Loading..."
-        className="h-24 w-24 object-contain"
+        className="w-full max-h-64 object-contain"
       />
       <p className="text-gray-700 font-semibold mt-6 text-lg text-center">
         {t(messageKeys[messageIndex])}

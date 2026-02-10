@@ -21,7 +21,7 @@ const VclLabApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel] = useState<AIModel>('gemini');
-  const [activeView, setActiveView] = useState<'generator' | 'admin' | 'gallery'>('generator');
+  const [activeView, setActiveView] = useState<'menu' | 'generator' | 'admin' | 'gallery'>('menu');
   const [usageSnapshot, setUsageSnapshot] = useState<UsageRecord | null>(null);
   const { t, setLocale, locale } = useLocalization();
   const translate = useCallback((key: string, fallback: string) => {
@@ -57,7 +57,7 @@ const VclLabApp: React.FC = () => {
       setGeneratedImages([]);
       setLastGenerationData(null);
       setError(null);
-      setActiveView('generator');
+      setActiveView('menu');
       setUsageSnapshot(null);
     }
   }, [user]);
@@ -105,13 +105,14 @@ const VclLabApp: React.FC = () => {
     setGeneratedImages([]);
     setLastGenerationData(null);
     setError(null);
+    setActiveView('menu');
   };
 
   const renderMainContent = () => {
     if (activeView === 'admin') {
       return (
         <AdminDashboard
-          onClose={() => setActiveView('generator')}
+          onClose={() => setActiveView('menu')}
           onUsageUpdated={(usage) => setUsageSnapshot(usage)}
         />
       );
@@ -120,22 +121,51 @@ const VclLabApp: React.FC = () => {
     if (activeView === 'gallery') {
       return (
         <ImageGallery
-          onClose={() => setActiveView('generator')}
+          onClose={() => setActiveView('menu')}
         />
       );
     }
 
+    if (activeView === 'generator') {
+      return (
+        <ProductCollageCreator
+          category={defaultCategory}
+          selectedModel={selectedModel}
+          onGenerate={handleGenerate}
+          onBack={handleReset}
+          error={error}
+          isGenerating={isGenerating}
+          generatedImages={generatedImages}
+          initialData={lastGenerationData}
+        />
+      );
+    }
+
+    // Menu view
     return (
-      <ProductCollageCreator
-        category={defaultCategory}
-        selectedModel={selectedModel}
-        onGenerate={handleGenerate}
-        onBack={handleReset}
-        error={error}
-        isGenerating={isGenerating}
-        generatedImages={generatedImages}
-        initialData={lastGenerationData}
-      />
+      <div className="w-full max-w-3xl mx-auto">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+          {translate('category_selector_title', 'What kind of photo do you need?')}
+        </h2>
+        <p className="text-gray-500 mb-8 text-center">
+          {translate('category_selector_subtitle', 'Please select a category that fits your business.')}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveView('generator')}
+              className="group flex flex-col items-center p-6 bg-white rounded-xl border-2 border-gray-200 hover:border-red-500 hover:shadow-lg transition-all text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:bg-red-100 transition-colors">
+                {cat.icon}
+              </div>
+              <h3 className="font-bold text-gray-900 mb-1">{t(cat.nameKey)}</h3>
+              <p className="text-sm text-gray-500">{t(cat.descriptionKey)}</p>
+            </button>
+          ))}
+        </div>
+      </div>
     );
   };
 
@@ -143,11 +173,12 @@ const VclLabApp: React.FC = () => {
     return <LoginScreen />;
   }
 
-  const usageLimitText = (() => {
+  const creditsRemaining = (() => {
     if (!usageSnapshot) return null;
     const limit = usageSnapshot.credits?.dailyLimit ?? 0;
-    const limitText = limit && limit > 0 ? limit.toString() : unlimitedLabel;
-    return `${usageSnapshot.credits?.used ?? 0} / ${limitText}`;
+    if (!limit || limit <= 0) return unlimitedLabel;
+    const used = usageSnapshot.credits?.used ?? 0;
+    return Math.max(0, limit - used);
   })();
 
   const isAdmin = user.role === 'admin';
@@ -158,9 +189,9 @@ const VclLabApp: React.FC = () => {
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div className="flex flex-col space-y-2 text-sm text-gray-600">
             <span className="font-semibold text-gray-800">{translate('header_welcome', 'Welcome back,')} {user.username}</span>
-            {usageLimitText && (
+            {creditsRemaining !== null && (
               <span className="inline-flex items-center gap-2 text-xs text-red-700 bg-red-100 px-3 py-1 rounded-full">
-                {translate('header_daily_credits', 'Daily credits')}: {usageLimitText}
+                {translate('header_daily_credits', 'Daily credits')}: {creditsRemaining}
               </span>
             )}
           </div>
@@ -168,11 +199,8 @@ const VclLabApp: React.FC = () => {
             <img
               src="/logo.png"
               alt="VCL Logo"
-              className="h-16 sm:h-20 mx-auto mb-2 group-hover:opacity-90 transition-opacity"
+              className="h-16 sm:h-20 mx-auto group-hover:opacity-90 transition-opacity"
             />
-            <p className="text-md sm:text-lg text-red-600">
-              {t('app_subheader_new')}
-            </p>
           </div>
           <div className="flex flex-col space-y-3 items-end">
             <div className="flex space-x-2">
@@ -197,7 +225,7 @@ const VclLabApp: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setActiveView(activeView === 'gallery' ? 'generator' : 'gallery')}
+                onClick={() => setActiveView(activeView === 'gallery' ? 'menu' : 'gallery')}
                 className={`px-3 py-1 text-xs rounded-md ${activeView === 'gallery' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
               >
                 {translate('gallery_button', 'My Gallery')}
