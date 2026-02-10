@@ -13,10 +13,11 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'Parts array is required.' });
   }
 
-  const project = process.env.GOOGLE_CLOUD_PROJECT;
+  const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!project || !apiKey) {
-    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT and GEMINI_API_KEY must be configured.' });
+  if (!project) {
+    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID must be configured.' });
   }
 
   try {
@@ -24,8 +25,8 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     const ai = new GoogleGenAI({
       vertexai: true,
       project,
-      location: 'global',
-      apiKey,
+      location,
+      ...(apiKey && { apiKey }),
     });
 
     const contents = { parts };
@@ -85,10 +86,11 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'Image is required for video generation.' });
   }
 
-  const project = process.env.GOOGLE_CLOUD_PROJECT;
+  const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!project || !apiKey) {
-    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT and GEMINI_API_KEY must be configured.' });
+  if (!project) {
+    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID must be configured.' });
   }
 
   try {
@@ -96,8 +98,8 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
     const ai = new GoogleGenAI({
       vertexai: true,
       project,
-      location: 'global',
-      apiKey,
+      location,
+      ...(apiKey && { apiKey }),
     });
 
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
