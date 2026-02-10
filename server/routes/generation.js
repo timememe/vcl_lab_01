@@ -2,8 +2,18 @@ import { Router } from 'express';
 import { Blob } from 'buffer';
 import { authMiddleware } from '../middleware/auth.js';
 import { parseBase64ImagePayload } from '../services/imageProcessing.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 const router = Router();
+
+// Write GOOGLE_APPLICATION_CREDENTIALS_JSON to a temp file for ADC auth
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  const credPath = path.join(os.tmpdir(), 'gcp-credentials.json');
+  fs.writeFileSync(credPath, process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
+}
 
 // Gemini image generation
 router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
@@ -15,7 +25,6 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
 
   const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
   const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-  const apiKey = process.env.GEMINI_API_KEY;
   if (!project) {
     return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID must be configured.' });
   }
@@ -26,7 +35,6 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
       vertexai: true,
       project,
       location,
-      ...(apiKey && { apiKey }),
     });
 
     const contents = { parts };
@@ -88,7 +96,6 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
 
   const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
   const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
-  const apiKey = process.env.GEMINI_API_KEY;
   if (!project) {
     return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID must be configured.' });
   }
@@ -99,7 +106,6 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
       vertexai: true,
       project,
       location,
-      ...(apiKey && { apiKey }),
     });
 
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -141,9 +147,7 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
           videoBase64 = `data:${videoMimeType};base64,${videoData.video.videoBytes}`;
         } else if (videoData.video.uri) {
           const fetch = (await import('node-fetch')).default;
-          const videoResponse = await fetch(videoData.video.uri, {
-            headers: { 'x-goog-api-key': apiKey }
-          });
+          const videoResponse = await fetch(videoData.video.uri);
           if (!videoResponse.ok) {
             throw new Error(`Failed to download video: ${videoResponse.status}`);
           }
