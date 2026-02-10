@@ -36,7 +36,7 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
       location: 'global',
     });
 
-    const contents = { parts };
+    const contents = [{ role: 'user', parts }];
     const config = {
       responseModalities: [Modality.IMAGE, Modality.TEXT],
       ...(aspectRatio && { imageConfig: { aspectRatio } })
