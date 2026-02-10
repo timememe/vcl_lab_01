@@ -13,14 +13,20 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'Parts array is required.' });
   }
 
+  const project = process.env.GOOGLE_CLOUD_PROJECT;
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  if (!project || !apiKey) {
+    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT and GEMINI_API_KEY must be configured.' });
   }
 
   try {
     const { GoogleGenAI, Modality } = await import('@google/genai');
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      vertexai: true,
+      project,
+      location: 'global',
+      apiKey,
+    });
 
     const contents = { parts };
     const config = {
@@ -79,14 +85,20 @@ router.post('/api/veo/generate', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'Image is required for video generation.' });
   }
 
+  const project = process.env.GOOGLE_CLOUD_PROJECT;
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ message: 'GEMINI_API_KEY is not configured on the server.' });
+  if (!project || !apiKey) {
+    return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT and GEMINI_API_KEY must be configured.' });
   }
 
   try {
     const { GoogleGenAI } = await import('@google/genai');
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      vertexai: true,
+      project,
+      location: 'global',
+      apiKey,
+    });
 
     const imageData = imageBase64.replace(/^data:image\/\w+;base64,/, '');
     const mimeType = imageBase64.match(/data:(image\/\w+);base64/)?.[1] || 'image/jpeg';
