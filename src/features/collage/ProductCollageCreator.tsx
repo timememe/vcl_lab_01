@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Camera, Video, Loader2 } from 'lucide-react';
-import { AIModel, Category, Product } from '@/types';
+import { Download, Video, Loader2, ChevronLeft, Smartphone, LayoutGrid, Monitor, Settings2, RefreshCw, RotateCcw } from 'lucide-react';
+import type { AIModel, Category, Product } from '@/types';
 import { useLocalization } from '@/i18n/LocalizationContext';
 import { useAuth } from '@/features/auth/AuthContext';
 import PresetSelector from '@/components/shared/PresetSelector';
@@ -9,6 +9,7 @@ import { settingsService } from '@/features/admin/services/settingsService';
 import type { Setting } from '@/types/settings';
 import { generateVideoFromImage } from '@/features/video/veoService';
 import { galleryService } from '@/features/gallery/galleryService';
+import { GENERATION_GOALS, type GenerationGoal } from '@/features/generator/constants';
 
 interface ProductCollageCreatorProps {
   category: Category;
@@ -21,6 +22,16 @@ interface ProductCollageCreatorProps {
   initialData?: Record<string, string | File> | null;
 }
 
+type Step = 'product' | 'goal' | 'result';
+
+const GOAL_ICONS: Record<string, React.ReactNode> = {
+  smartphone: <Smartphone className="w-8 h-8" />,
+  layout: <LayoutGrid className="w-8 h-8" />,
+  monitor: <Monitor className="w-8 h-8" />,
+};
+
+const STEPS: Step[] = ['product', 'goal', 'result'];
+
 const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   category,
   selectedModel,
@@ -29,32 +40,48 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
   error,
   isGenerating,
   generatedImages,
-  initialData
+  initialData,
 }) => {
   const { t } = useLocalization();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
 
-  // Settings state
+  // Stepper state
+  const [step, setStep] = useState<Step>('product');
+  const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
+  const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
+  const [selectedGoal, setSelectedGoal] = useState<GenerationGoal | null>(null);
+
+  // Advanced settings
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [lightingOverride, setLightingOverride] = useState<string>('');
+  const [backgroundOverride, setBackgroundOverride] = useState<string>('');
+  const [cameraOverride, setCameraOverride] = useState<string>('');
+  const [customRequest, setCustomRequest] = useState('');
+
+  // Settings from server
   const [lightingSettings, setLightingSettings] = useState<Setting[]>([]);
   const [backgroundSettings, setBackgroundSettings] = useState<Setting[]>([]);
   const [cameraAngleSettings, setCameraAngleSettings] = useState<Setting[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
-  // Load settings on mount
+  // Video generation state
+  const [generatedVideos, setGeneratedVideos] = useState<Record<number, string>>({});
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState<Record<number, boolean>>({});
+
+  // Load settings
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const [lighting, background, camera] = await Promise.all([
           settingsService.getActiveSettings('lighting'),
           settingsService.getActiveSettings('background'),
-          settingsService.getActiveSettings('camera_angle')
+          settingsService.getActiveSettings('camera_angle'),
         ]);
         setLightingSettings(lighting);
         setBackgroundSettings(background);
         setCameraAngleSettings(camera);
-      } catch (error) {
-        console.error('Failed to load settings:', error);
+      } catch (err) {
+        console.error('Failed to load settings:', err);
       } finally {
         setSettingsLoading(false);
       }
@@ -62,39 +89,97 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     loadSettings();
   }, []);
 
-  // Set default values from loaded settings
+  // Move to result step when generation completes
   useEffect(() => {
-    if (!settingsLoading && lightingSettings.length > 0 && backgroundSettings.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        lightingStyle: prev.lightingStyle || lightingSettings[0]?.value,
-        backgroundType: prev.backgroundType || backgroundSettings[0]?.value
-      }));
+    if (generatedImages.length > 0 && !isGenerating) {
+      setStep('result');
     }
-  }, [settingsLoading, lightingSettings, backgroundSettings]);
+  }, [generatedImages, isGenerating]);
 
-  // Form state
-  const [formData, setFormData] = useState<Record<string, string | File>>(
-    initialData || {
-      cameraAngle: 'option_camera_default',
-      conceptPreset: 'option_concept_modern',
-      customRequest: ''
+  // Move to result step when generating starts
+  useEffect(() => {
+    if (isGenerating) {
+      setStep('result');
     }
-  );
+  }, [isGenerating]);
 
-  // Preset selection state
-  const [selectedMode, setSelectedMode] = useState<'upload' | 'preset'>('preset');
-  const [selectedPreset, setSelectedPreset] = useState<Product | null>(null);
-  const [aspectRatio, setAspectRatio] = useState('9:16');
-  const [cameraAngle, setCameraAngle] = useState('default');
+  const handleGoalSelect = (goal: GenerationGoal) => {
+    setSelectedGoal(goal);
+    triggerGeneration(goal);
+  };
 
-  // Background reference image state
-  const [backgroundReference, setBackgroundReference] = useState<File | null>(null);
-  const [backgroundPreview, setBackgroundPreview] = useState<string | null>(null);
+  const triggerGeneration = (goal: GenerationGoal) => {
+    if (!selectedPreset) return;
 
-  // Video generation state
-  const [generatedVideos, setGeneratedVideos] = useState<Record<number, string>>({});
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState<Record<number, boolean>>({});
+    const lighting = lightingOverride || goal.defaults.lighting;
+    const background = backgroundOverride || goal.defaults.background;
+    const camera = cameraOverride || goal.defaults.camera;
+
+    const lightingMap: Record<string, string> = {
+      soft: 'soft and even lighting',
+      dramatic: 'dramatic shadows',
+      bright: 'bright and airy lighting',
+      golden: 'golden hour lighting',
+      studio: 'professional studio lighting',
+    };
+    lightingSettings.forEach(s => {
+      lightingMap[s.value] = s.description || s.label.toLowerCase();
+    });
+
+    const backgroundMap: Record<string, string> = {
+      white: 'a clean white background',
+      black: 'an elegant black background',
+      gradient: 'a smooth gradient background',
+      studio: 'a professional studio setting',
+      natural: 'a natural, outdoor environment',
+      minimalist: 'a minimalist scene',
+    };
+    backgroundSettings.forEach(s => {
+      backgroundMap[s.value] = s.description || s.label.toLowerCase();
+    });
+
+    const cameraAngleMap: Record<string, string> = {
+      default: 'a standard product photography angle',
+      closeup: 'a detailed close-up shot',
+      dutch_angle: 'a dynamic dutch angle shot',
+      top_down: 'a top-down, flat-lay perspective',
+      top: 'a top-down, flat-lay perspective',
+      '45deg': 'a 45-degree angled view',
+      side: 'a side profile view',
+    };
+    cameraAngleSettings.forEach(s => {
+      cameraAngleMap[s.value] = s.description || s.label.toLowerCase();
+    });
+
+    const lightingDesc = lightingMap[lighting] || 'professional studio lighting';
+    const backgroundDesc = backgroundMap[background] || 'a clean background';
+    const cameraDesc = cameraAngleMap[camera] || 'a standard product photography angle';
+
+    let prompt = `Transform the uploaded image of a product named "${selectedPreset.name}".\n`;
+    prompt += `Camera angle: ${cameraDesc}.\n`;
+    prompt += `Lighting: ${lightingDesc}.\n`;
+    prompt += `Background: ${backgroundDesc}.\n`;
+    prompt += `The composition should be neat and organized.\n`;
+
+    if (customRequest.trim()) {
+      prompt += `\nAdditional requirements: ${customRequest}\n`;
+    }
+
+    prompt += `\nThe final image must be a hyper-realistic, high-resolution, and professional product photograph. Keep the product itself unchanged but recompose the entire scene around it.`;
+
+    onGenerate({
+      generationType: 'text-to-image',
+      prompt,
+      customRequest: prompt,
+      aspectRatio: goal.aspectRatio,
+      cameraAngle: camera,
+      lightingStyle: lighting,
+      backgroundType: background,
+      selectedPreset: selectedPreset.id,
+      presetImage: selectedPreset.image,
+      productName: selectedPreset.name,
+    });
+  };
 
   const handleGenerateVideo = async (imageIndex: number) => {
     const imageBase64 = generatedImages[imageIndex];
@@ -103,12 +188,12 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
     setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: true }));
 
     try {
-      const videoPrompt = `Create a dynamic product video showcasing the item. ${formData.customRequest || ''}. Use smooth camera movements and professional lighting to highlight the product features.`;
+      const videoPrompt = `Create a dynamic product video showcasing the item. ${customRequest || ''}. Use smooth camera movements and professional lighting to highlight the product features.`;
 
       const { video, duration } = await generateVideoFromImage(
         imageBase64,
         videoPrompt,
-        aspectRatio || '9:16'
+        selectedGoal?.aspectRatio || '9:16'
       );
 
       setGeneratedVideos(prev => ({ ...prev, [imageIndex]: video }));
@@ -120,326 +205,246 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           prompt: videoPrompt,
           metadata: {
             sourceImage: imageBase64.substring(0, 100),
-            formData: Object.fromEntries(
-              Object.entries(formData).filter(([_, v]) => typeof v === 'string')
-            )
+            goal: selectedGoal?.id,
           },
           ai_model: 'veo',
           media_type: 'video',
-          duration: duration || undefined
+          duration: duration || undefined,
         });
       } catch (saveError) {
         console.error('Failed to save video to gallery:', saveError);
       }
-    } catch (error) {
-      console.error('Video generation failed:', error);
+    } catch (err) {
+      console.error('Video generation failed:', err);
       alert('Failed to generate video. Please try again.');
     } finally {
       setIsGeneratingVideo(prev => ({ ...prev, [imageIndex]: false }));
     }
   };
 
-  const handleGenerate = () => {
-    if (selectedMode === 'preset' && !selectedPreset) {
-      return;
-    }
-
-    const productName = selectedMode === 'preset' && selectedPreset ? selectedPreset.name : (formData.productName as string || 'the product');
-
-    const lightingMap: Record<string, string> = {
-      'soft': 'soft and even lighting',
-      'dramatic': 'dramatic shadows',
-      'bright': 'bright and airy lighting',
-      'golden': 'golden hour lighting',
-      'studio': 'professional studio lighting',
-    };
-    lightingSettings.forEach(s => {
-      lightingMap[s.value] = s.description || s.label.toLowerCase();
-    });
-
-    const backgroundMap: Record<string, string> = {
-      'white': 'a clean white background',
-      'black': 'an elegant black background',
-      'gradient': 'a smooth gradient background',
-      'studio': 'a professional studio setting',
-      'natural': 'a natural, outdoor environment',
-      'minimalist': 'a minimalist scene',
-    };
-    backgroundSettings.forEach(s => {
-      backgroundMap[s.value] = s.description || s.label.toLowerCase();
-    });
-
-    const cameraAngleMap: Record<string, string> = {
-      'default': 'a standard product photography angle',
-      'closeup': 'a detailed close-up shot',
-      'dutch_angle': 'a dynamic dutch angle shot',
-      'top_down': 'a top-down, flat-lay perspective',
-      'top': 'a top-down, flat-lay perspective',
-      '45deg': 'a 45-degree angled view',
-      'side': 'a side profile view',
-    };
-    cameraAngleSettings.forEach(s => {
-      cameraAngleMap[s.value] = s.description || s.label.toLowerCase();
-    });
-
-    const lightingValue = (formData.lightingStyle as string) || lightingSettings[0]?.value || 'soft';
-    const backgroundValue = (formData.backgroundType as string) || backgroundSettings[0]?.value || 'white';
-    const lightingDesc = lightingMap[lightingValue] || 'professional studio lighting';
-    const backgroundDesc = backgroundMap[backgroundValue] || 'a clean background';
-    const cameraAngleDesc = cameraAngleMap[cameraAngle] || cameraAngleMap['default'] || 'a standard product photography angle';
-
-    let prompt = `Transform the uploaded image of a product named "${productName}".\n`;
-    prompt += `Camera angle: ${cameraAngleDesc}.\n`;
-
-    if (backgroundReference) {
-      prompt += `Take the product from the first image and place it in a new scene. The new scene\'s background, lighting, and overall style should be inspired by the second (reference) image.\n`;
-    } else {
-      prompt += `Lighting: ${lightingDesc}.\n`;
-      prompt += `Background: ${backgroundDesc}.\n`;
-      prompt += `The composition should be neat and organized.\n`;
-    }
-
-    if (formData.customRequest && (formData.customRequest as string).trim()) {
-      prompt += `\nAdditional requirements: ${formData.customRequest as string}\n`;
-    }
-
-    prompt += `\nThe final image must be a hyper-realistic, high-resolution, and professional product photograph. Keep the product itself unchanged but recompose the entire scene around it.`;
-
-    const aiFormData = {
-      ...formData,
-      generationType: 'text-to-image',
-      prompt: prompt,
-      customRequest: prompt,
-      aspectRatio: aspectRatio,
-      cameraAngle: cameraAngle,
-    };
-
-    if (selectedMode === 'preset' && selectedPreset) {
-      aiFormData.selectedPreset = selectedPreset.id;
-      aiFormData.presetImage = selectedPreset.image;
-      aiFormData.productName = selectedPreset.name;
-    }
-
-    if (backgroundReference) {
-      aiFormData.backgroundReferenceImage = backgroundReference;
-    }
-
-    onGenerate(aiFormData);
+  const handleStartOver = () => {
+    setStep('product');
+    setSelectedPreset(null);
+    setSelectedGoal(null);
+    setShowAdvanced(false);
+    setLightingOverride('');
+    setBackgroundOverride('');
+    setCameraOverride('');
+    setCustomRequest('');
+    setGeneratedVideos({});
+    onBack();
   };
 
+  const handleRegenerate = () => {
+    if (selectedGoal) {
+      triggerGeneration(selectedGoal);
+    }
+  };
+
+  const currentStepIndex = STEPS.indexOf(step);
+  const stepLabels = [t('stepper_step_product'), t('stepper_step_goal'), t('stepper_step_result')];
+
   return (
-    <div className="w-full max-w-7xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t(category.nameKey)}</h1>
-          <p className="text-gray-600">{t(category.descriptionKey)}</p>
-        </div>
+    <div className="w-full max-w-4xl mx-auto p-6">
+      {/* Step indicator */}
+      <div className="flex items-center justify-center mb-8">
+        {STEPS.map((s, i) => (
+          <React.Fragment key={s}>
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  i <= currentStepIndex
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {i + 1}
+              </div>
+              <span className={`mt-1 text-xs font-medium ${i <= currentStepIndex ? 'text-red-600' : 'text-gray-400'}`}>
+                {stepLabels[i]}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`w-16 sm:w-24 h-0.5 mx-2 mb-5 ${i < currentStepIndex ? 'bg-red-600' : 'bg-gray-200'}`} />
+            )}
+          </React.Fragment>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left Column - Settings */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:col-span-2 self-start">
-          {/* Product Selection */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200 xl:col-span-2">
-            <h3 className="text-lg font-semibold mb-3">Product Selection</h3>
-            <PresetSelector
-              categoryId={category.id}
-              onPresetSelect={setSelectedPreset}
-              onUploadSelect={() => setSelectedMode('upload')}
-              selectedPreset={selectedPreset}
-              selectedMode={selectedMode}
-            />
+      {/* Step 1: Product selection */}
+      {step === 'product' && (
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('stepper_select_product')}</h2>
+          <p className="text-gray-500 mb-6">{t('category_product_photo_desc')}</p>
+
+          <PresetSelector
+            onPresetSelect={(preset) => {
+              setSelectedPreset(preset);
+              setSelectedMode('preset');
+            }}
+            onUploadSelect={() => setSelectedMode('upload')}
+            selectedPreset={selectedPreset}
+            selectedMode={selectedMode}
+          />
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setStep('goal')}
+              disabled={!selectedPreset}
+              className="px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {t('stepper_next')}
+            </button>
           </div>
-
-          {/* Composition Settings */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-3">Composition Settings</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</label>
-                <div className="flex space-x-2">
-                  {['9:16', '1:1', '16:9'].map(ratio => (
-                    <button
-                      key={ratio}
-                      type="button"
-                      onClick={() => setAspectRatio(ratio)}
-                      className={`flex-1 py-2 px-4 rounded-md border text-sm font-semibold transition-colors ${
-                        aspectRatio === ratio
-                          ? 'bg-red-600 text-white border-red-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
-                      }`}
-                    >
-                      {ratio}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lighting Style</label>
-                {settingsLoading ? (
-                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
-                    Loading...
-                  </div>
-                ) : (
-                  <select
-                    value={formData.lightingStyle as string || (lightingSettings[0]?.value || 'soft')}
-                    onChange={(e) => setFormData(prev => ({ ...prev, lightingStyle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    {lightingSettings.map(setting => (
-                      <option key={setting.id} value={setting.value}>
-                        {setting.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Camera Angle</label>
-                {settingsLoading ? (
-                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
-                    Loading...
-                  </div>
-                ) : (
-                  <select
-                    value={cameraAngle}
-                    onChange={(e) => setCameraAngle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    {cameraAngleSettings.map(setting => (
-                      <option key={setting.id} value={setting.value}>
-                        {setting.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Background Settings */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Background Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Background Type</label>
-                  {settingsLoading ? (
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400">
-                      Loading...
-                    </div>
-                  ) : (
-                    <select
-                      value={formData.backgroundType as string || (backgroundSettings[0]?.value || 'white')}
-                      onChange={(e) => setFormData(prev => ({ ...prev, backgroundType: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      {backgroundSettings.map(setting => (
-                        <option key={setting.id} value={setting.value}>
-                          {setting.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Background Reference</label>
-                {backgroundPreview ? (
-                  <div className="relative">
-                    <img
-                      src={backgroundPreview}
-                      alt="Background reference"
-                      className="w-full h-40 object-cover rounded-md border border-gray-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBackgroundReference(null);
-                        setBackgroundPreview(null);
-                      }}
-                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full h-7 w-7 flex items-center justify-center text-xl font-bold hover:bg-red-700"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center bg-gray-50 hover:border-blue-400 transition-colors cursor-pointer">
-                    <input
-                      type="file"
-                      id="backgroundReference"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setBackgroundReference(file);
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setBackgroundPreview(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                    <label htmlFor="backgroundReference" className="cursor-pointer">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <p className="mt-2 text-sm text-gray-500">Upload background reference</p>
-                      <p className="text-xs text-gray-400 mt-1">Click to browse</p>
-                    </label>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Requests */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 className="text-lg font-semibold mb-3">Additional Requests</h3>
-            <textarea
-              value={formData.customRequest as string}
-              onChange={(e) => setFormData(prev => ({ ...prev, customRequest: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none text-sm"
-              rows={3}
-              placeholder="Any additional requirements or style preferences..."
-            />
-          </div>
-
-          {/* Generate Button */}
-          <button
-            onClick={handleGenerate}
-            disabled={selectedMode === 'preset' ? !selectedPreset : false}
-            className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Camera className="w-5 h-5 mr-2" />
-            Generate Product Photo
-          </button>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
         </div>
+      )}
 
-        {/* Right Column - Preview */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col lg:col-span-3">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">Preview</h3>
-          <div className="flex-1 flex items-center justify-center min-h-[300px]">
+      {/* Step 2: Goal selection */}
+      {step === 'goal' && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <button
+              onClick={() => setStep('product')}
+              className="p-1 rounded-md hover:bg-gray-100 text-gray-500"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900">{t('stepper_select_goal')}</h2>
+          </div>
+
+          {selectedPreset && (
+            <p className="text-gray-500 mb-6 ml-9">
+              {selectedPreset.name}
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            {GENERATION_GOALS.map((goal) => (
+              <button
+                key={goal.id}
+                onClick={() => handleGoalSelect(goal)}
+                disabled={settingsLoading}
+                className="group flex flex-col items-center p-6 bg-white rounded-xl border-2 border-gray-200 hover:border-red-500 hover:shadow-lg transition-all text-center disabled:opacity-50"
+              >
+                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:bg-red-100 transition-colors">
+                  {GOAL_ICONS[goal.icon]}
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">{t(goal.nameKey)}</h3>
+                <p className="text-sm text-gray-500">{t(goal.descKey)}</p>
+                <span className="mt-3 text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                  {goal.aspectRatio}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Advanced settings toggle */}
+          <div className="border-t border-gray-200 pt-4">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <Settings2 className="w-4 h-4" />
+              {t('stepper_advanced')}
+            </button>
+
+            {showAdvanced && !settingsLoading && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lighting</label>
+                  <select
+                    value={lightingOverride}
+                    onChange={(e) => setLightingOverride(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Auto (by goal)</option>
+                    {lightingSettings.map(s => (
+                      <option key={s.id} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Background</label>
+                  <select
+                    value={backgroundOverride}
+                    onChange={(e) => setBackgroundOverride(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Auto (by goal)</option>
+                    {backgroundSettings.map(s => (
+                      <option key={s.id} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Camera</label>
+                  <select
+                    value={cameraOverride}
+                    onChange={(e) => setCameraOverride(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Auto (by goal)</option>
+                    {cameraAngleSettings.map(s => (
+                      <option key={s.id} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('field_customRequest_label')}</label>
+                  <textarea
+                    value={customRequest}
+                    onChange={(e) => setCustomRequest(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none text-sm"
+                    rows={2}
+                    placeholder={t('field_customRequest_placeholder')}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Result */}
+      {step === 'result' && (
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">{t('stepper_step_result')}</h2>
+            {selectedGoal && (
+              <span className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded font-mono">
+                {t(selectedGoal.nameKey)} · {selectedGoal.aspectRatio}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-center min-h-[400px]">
             {isGenerating ? (
               <LoadingIndicator />
             ) : error ? (
-              <div className="text-center text-red-500">
-                <p className="font-bold">Generation Failed</p>
-                <p className="text-sm">{error}</p>
+              <div className="text-center">
+                <p className="font-bold text-red-600 mb-2">{t('error_generation_failed')}</p>
+                <p className="text-sm text-red-500 mb-4">{error}</p>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={handleRegenerate}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    {t('stepper_regenerate')}
+                  </button>
+                  <button
+                    onClick={handleStartOver}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {t('stepper_start_over')}
+                  </button>
+                </div>
               </div>
             ) : generatedImages.length > 0 ? (
-              <div className="w-full h-full flex flex-col gap-4 p-4 overflow-y-auto">
+              <div className="w-full flex flex-col gap-4">
                 {generatedImages.map((image, index) => (
-                  <div key={index} className="flex flex-col gap-3 bg-white rounded-lg shadow-md p-4">
+                  <div key={index} className="flex flex-col gap-3 bg-white rounded-xl shadow-md p-4">
                     {generatedVideos[index] ? (
                       <video
                         src={generatedVideos[index]}
@@ -447,33 +452,27 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                         autoPlay
                         loop
                         muted
-                        className="w-full h-auto object-contain max-h-[calc(100vh-500px)] rounded-lg bg-black"
+                        className="w-full h-auto object-contain max-h-[60vh] rounded-lg bg-black"
                       />
                     ) : (
                       <img
                         src={image}
                         alt={`Generated ${index + 1}`}
-                        className="rounded-lg object-contain max-w-full max-h-[calc(100vh-500px)]"
+                        className="rounded-lg object-contain max-w-full max-h-[60vh] mx-auto"
                       />
                     )}
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {!generatedVideos[index] && (
                         <button
                           onClick={() => handleGenerateVideo(index)}
                           disabled={isGeneratingVideo[index]}
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
+                          className="flex-1 min-w-[140px] bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2.5 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                         >
                           {isGeneratingVideo[index] ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Generating Video...
-                            </>
+                            <><Loader2 className="w-4 h-4 animate-spin" />{t('stepper_generating')}</>
                           ) : (
-                            <>
-                              <Video className="w-4 h-4" />
-                              Generate Video (Veo 3.1)
-                            </>
+                            <><Video className="w-4 h-4" />Generate Video (Veo)</>
                           )}
                         </button>
                       )}
@@ -484,37 +483,48 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                           a.download = `product_${generatedVideos[index] ? 'video' : 'photo'}_${index + 1}.${generatedVideos[index] ? 'mp4' : 'jpeg'}`;
                           a.click();
                         }}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
+                        className="flex-1 min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                       >
                         <Download className="w-4 h-4" />
-                        {generatedVideos[index] ? 'Download Video' : 'Download Image'}
+                        {generatedVideos[index] ? t('button_download') + ' Video' : t('button_download')}
                       </button>
                     </div>
                   </div>
                 ))}
+
+                {/* Action buttons below results */}
+                <div className="flex gap-3 justify-center pt-2">
+                  <button
+                    onClick={handleRegenerate}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    {t('stepper_regenerate')}
+                  </button>
+                  <button
+                    onClick={() => setStep('goal')}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {t('stepper_step_goal')}
+                  </button>
+                  <button
+                    onClick={handleStartOver}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {t('stepper_start_over')}
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gray-200 rounded-lg mb-4 mx-auto flex items-center justify-center">
-                  <Camera className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 text-sm">
-                  {selectedMode === 'preset'
-                    ? (selectedPreset ? `Ready to generate ${selectedPreset.nameKey} photo` : 'Select a product preset to see preview')
-                    : 'Upload mode selected'
-                  }
-                </p>
-                {selectedPreset && (
-                  <div className="mt-3 text-xs text-gray-400 space-y-1">
-                    <p>Background: {formData.backgroundType || 'white'}</p>
-                    <p>Lighting: {formData.lightingStyle || 'soft'}</p>
-                  </div>
-                )}
+              <div className="text-center text-gray-400">
+                <p>{t('stepper_generating')}</p>
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

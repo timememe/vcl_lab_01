@@ -42,6 +42,27 @@ export const locales: { [key in Locale]: Translations } = {
     footer_made_by: '© 2024 VCL Studio - Powered by',
     footer_follow_cta: 'Профессиональные визуальные решения для вашего бизнеса. VCL - ваш партнер в создании контента.',
     
+    // Stepper
+    stepper_step_product: 'Продукт',
+    stepper_step_goal: 'Цель',
+    stepper_step_result: 'Результат',
+    stepper_next: 'Далее',
+    stepper_back: 'Назад',
+    stepper_regenerate: 'Перегенерировать',
+    stepper_start_over: 'Начать заново',
+    stepper_advanced: 'Настроить',
+    stepper_select_product: 'Выберите продукт',
+    stepper_select_goal: 'Для чего вам нужно фото?',
+    stepper_generating: 'Генерируем...',
+
+    // Generation Goals
+    goal_instagram: 'Instagram Packshot',
+    goal_instagram_desc: 'Вертикальное фото 9:16 для сторис и Reels',
+    goal_social_post: 'Соцсети (пост)',
+    goal_social_post_desc: 'Квадратное фото 1:1 для постов',
+    goal_banner: 'Баннер',
+    goal_banner_desc: 'Горизонтальное фото 16:9 для баннеров и обложек',
+
     // Category Selector
     category_selector_title: 'Какой тип фотографий вам нужен?',
     category_selector_subtitle: 'Выберите категорию, подходящую для вашей сферы деятельности.',
@@ -257,6 +278,27 @@ export const locales: { [key in Locale]: Translations } = {
     footer_made_by: '© 2024 VCL Studio - Powered by',
     footer_follow_cta: 'Professional visual solutions for your business. VCL - your content creation partner.',
 
+    // Stepper
+    stepper_step_product: 'Product',
+    stepper_step_goal: 'Goal',
+    stepper_step_result: 'Result',
+    stepper_next: 'Next',
+    stepper_back: 'Back',
+    stepper_regenerate: 'Regenerate',
+    stepper_start_over: 'Start Over',
+    stepper_advanced: 'Customize',
+    stepper_select_product: 'Select a product',
+    stepper_select_goal: 'What do you need the photo for?',
+    stepper_generating: 'Generating...',
+
+    // Generation Goals
+    goal_instagram: 'Instagram Packshot',
+    goal_instagram_desc: 'Vertical 9:16 photo for Stories and Reels',
+    goal_social_post: 'Social Post',
+    goal_social_post_desc: 'Square 1:1 photo for feed posts',
+    goal_banner: 'Banner',
+    goal_banner_desc: 'Horizontal 16:9 photo for banners and covers',
+
     // Category Selector
     category_selector_title: 'What kind of photo do you need?',
     category_selector_subtitle: 'Please select a category that fits your business.',
@@ -471,6 +513,27 @@ export const locales: { [key in Locale]: Translations } = {
     tooltip_go_home: 'Басына оралу',
     footer_made_by: '© 2024 VCL Studio - қуатталған',
     footer_follow_cta: 'Сіздің бизнесіңіз үшін кәсіби визуалды шешімдер. VCL - сіздің контент жасау серіктесіңіз.',
+
+    // Stepper
+    stepper_step_product: 'Өнім',
+    stepper_step_goal: 'Мақсат',
+    stepper_step_result: 'Нәтиже',
+    stepper_next: 'Келесі',
+    stepper_back: 'Артқа',
+    stepper_regenerate: 'Қайта жасау',
+    stepper_start_over: 'Басынан бастау',
+    stepper_advanced: 'Баптау',
+    stepper_select_product: 'Өнімді таңдаңыз',
+    stepper_select_goal: 'Фото не үшін керек?',
+    stepper_generating: 'Жасалуда...',
+
+    // Generation Goals
+    goal_instagram: 'Instagram Packshot',
+    goal_instagram_desc: 'Тік 9:16 фото Stories және Reels үшін',
+    goal_social_post: 'Әлеуметтік желі (пост)',
+    goal_social_post_desc: 'Шаршы 1:1 фото посттар үшін',
+    goal_banner: 'Баннер',
+    goal_banner_desc: 'Көлденең 16:9 фото баннерлер мен мұқабалар үшін',
 
     // Category Selector
     category_selector_title: 'Сізге қандай түрдегі фотосурет керек?',

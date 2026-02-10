@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { Category, AIModel } from '@/types';
 import type { UsageRecord } from '@/types/usage';
 import { CATEGORIES } from '@/features/generator/constants';
-import CategorySpecificGenerator from '@/features/generator/CategorySpecificGenerator';
+import ProductCollageCreator from '@/features/collage/ProductCollageCreator';
 import LoadingIndicator from '@/components/shared/LoadingIndicator';
 import { generateImages } from '@/features/generator/services/aiService';
 import { useLocalization } from '@/i18n/LocalizationContext';
@@ -126,7 +126,7 @@ const VclLabApp: React.FC = () => {
     }
 
     return (
-      <CategorySpecificGenerator
+      <ProductCollageCreator
         category={defaultCategory}
         selectedModel={selectedModel}
         onGenerate={handleGenerate}

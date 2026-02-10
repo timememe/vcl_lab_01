@@ -1,6 +1,42 @@
 import React from 'react';
 import type { Category } from '@/types';
 
+export interface GenerationGoal {
+  id: string;
+  nameKey: string;
+  descKey: string;
+  icon: string;
+  aspectRatio: string;
+  defaults: { lighting: string; background: string; camera: string };
+}
+
+export const GENERATION_GOALS: GenerationGoal[] = [
+  {
+    id: 'instagram',
+    nameKey: 'goal_instagram',
+    descKey: 'goal_instagram_desc',
+    icon: 'smartphone',
+    aspectRatio: '9:16',
+    defaults: { lighting: 'dramatic', background: 'gradient', camera: 'default' },
+  },
+  {
+    id: 'social_post',
+    nameKey: 'goal_social_post',
+    descKey: 'goal_social_post_desc',
+    icon: 'layout',
+    aspectRatio: '1:1',
+    defaults: { lighting: 'bright', background: 'minimalist', camera: 'default' },
+  },
+  {
+    id: 'banner',
+    nameKey: 'goal_banner',
+    descKey: 'goal_banner_desc',
+    icon: 'monitor',
+    aspectRatio: '16:9',
+    defaults: { lighting: 'studio', background: 'studio', camera: 'side' },
+  },
+];
+
 const ProductPhotoIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-600" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> );
 
 const getConceptInstructions = (data: Record<string, string>, presetInstructions: Record<string, string>) => {
