@@ -24,7 +24,6 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
   }
 
   const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
-  const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
   if (!project) {
     return res.status(500).json({ message: 'GOOGLE_CLOUD_PROJECT_ID must be configured.' });
   }
@@ -34,7 +33,7 @@ router.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     const ai = new GoogleGenAI({
       vertexai: true,
       project,
-      location,
+      location: 'global',
     });
 
     const contents = { parts };
