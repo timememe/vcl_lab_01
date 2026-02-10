@@ -21,16 +21,16 @@ const LoadingIndicator: React.FC = () => {
     }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full">
+    <div className="flex flex-col items-center justify-center bg-black/30 backdrop-blur-md p-8 rounded-2xl border border-white/10 w-full">
       <img
         src="/load_dombra.gif"
         alt="Loading..."
         className="w-full max-h-64 object-contain"
       />
-      <p className="text-gray-700 font-semibold mt-6 text-lg text-center">
+      <p className="text-white font-semibold mt-6 text-lg text-center">
         {t(messageKeys[messageIndex])}
       </p>
-      <p className="text-gray-500 mt-2 text-sm">
+      <p className="text-white/50 mt-2 text-sm">
         {t('loading_submessage')}
       </p>
     </div>

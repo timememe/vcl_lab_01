@@ -62,7 +62,7 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
             className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
               selectedMode === 'upload'
                 ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-red-700 border-red-200 hover:border-red-300'
+                : 'bg-white/10 text-white/70 border-white/20 hover:border-white/40'
             }`}
           >
             📁 {t('preset_option_upload')}
@@ -70,7 +70,6 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
           <button
             type="button"
             onClick={() => {
-              // Switch to preset mode - if there are products available, select the first one
               if (products.length > 0) {
                 onPresetSelect(products[0]);
               }
@@ -78,7 +77,7 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
             className={`flex-1 py-3 px-4 rounded-md border transition-colors ${
               selectedMode === 'preset'
                 ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-red-700 border-red-200 hover:border-red-300'
+                : 'bg-white/10 text-white/70 border-white/20 hover:border-white/40'
             }`}
           >
             🎨 {t('preset_option_choose')}
@@ -88,7 +87,7 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
 
       {/* Loading state */}
       {loading && selectedMode === 'preset' && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-white/50">
           <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto"></div>
           <p className="mt-2">Loading presets...</p>
         </div>
@@ -103,11 +102,11 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
               onClick={() => onPresetSelect(product)}
               className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
                 selectedPreset?.id === product.id
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-200 hover:border-red-300 bg-white'
+                  ? 'border-red-500 bg-red-600/20'
+                  : 'border-white/10 hover:border-red-500/40 bg-black/30 backdrop-blur-md'
               }`}
             >
-              <div className="aspect-square bg-gray-100 rounded-md mb-2 overflow-hidden">
+              <div className="aspect-square bg-black/20 rounded-md mb-2 overflow-hidden">
                 <img
                   src={product.image}
                   alt={product.name}
@@ -118,8 +117,8 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
                   }}
                 />
               </div>
-              <h3 className="font-medium text-sm text-gray-900">{product.name}</h3>
-              <p className="text-xs text-gray-600 mt-1">
+              <h3 className="font-medium text-sm text-white">{product.name}</h3>
+              <p className="text-xs text-white/50 mt-1">
                 {product.presets.concept} • {product.presets.lighting}
               </p>
             </div>
@@ -129,7 +128,7 @@ const PresetSelector: React.FC<PresetSelectorProps> = ({
 
       {/* No presets available message */}
       {!loading && selectedMode === 'preset' && products.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-white/50">
           <p>No presets available for this category yet.</p>
         </div>
       )}

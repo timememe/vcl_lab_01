@@ -76,8 +76,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-        <span className="ml-3 text-gray-600">Loading gallery...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+        <span className="ml-3 text-white/50">Loading gallery...</span>
       </div>
     );
   }
@@ -96,10 +96,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Grid3x3 className="w-6 h-6 text-red-600" />
+          <Grid3x3 className="w-6 h-6 text-red-400" />
           <div>
-            <h2 className="text-2xl font-bold">My Gallery</h2>
-            <p className="text-sm text-gray-600">{images.length} images generated</p>
+            <h2 className="text-2xl font-bold text-white">My Gallery</h2>
+            <p className="text-sm text-white/50">{images.length} images generated</p>
           </div>
         </div>
         {onClose && (
@@ -111,7 +111,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
 
       {/* Filters */}
       <div className="flex items-center gap-2">
-        <Filter className="w-4 h-4 text-gray-600" />
+        <Filter className="w-4 h-4 text-white/50" />
         <Button
           variant={selectedCategory === undefined ? 'default' : 'outline'}
           size="sm"
@@ -137,17 +137,17 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ categoryFilter, onClose }) 
 
       {/* Gallery Grid */}
       {images.length === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-400">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-white/30">
           <ImageIcon className="w-16 h-16 mb-4" />
           <p className="text-lg font-medium">No images yet</p>
-          <p className="text-sm">Generate your first image to see it here!</p>
+          <p className="text-sm text-white/20">Generate your first image to see it here!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {images.map((image) => (
             <div
               key={image.id}
-              className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition-all"
+              className="group relative aspect-square bg-black/30 rounded-lg overflow-hidden border border-white/10 hover:border-red-500/50 transition-all"
             >
               {/* Image or Video */}
               {image.media_type === 'video' ? (

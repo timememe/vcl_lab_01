@@ -36,7 +36,15 @@
       "WebFetch(domain:docs.cloud.google.com)",
       "Bash(npm show:*)",
       "Bash(xcopy:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "WebFetch(domain:discuss.google.dev)",
+      "WebFetch(domain:discuss.ai.google.dev)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:portkey.ai)",
+      "Bash(echo 'curl -s \"\"https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_GEMINI_KEY\"\" | head -20')",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

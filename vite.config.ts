@@ -26,6 +26,15 @@ export default defineConfig(({ mode }) => {
         port: parseInt(process.env.PORT || '4173'),
         allowedHosts: ['vcl-lab-01.onrender.com', 'localhost', '127.0.0.1']
       },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              three: ['three', '@react-three/fiber', '@react-three/postprocessing', 'postprocessing']
+            }
+          }
+        }
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, 'src'),

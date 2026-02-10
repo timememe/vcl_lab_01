@@ -12,6 +12,7 @@ import AdminDashboard from '@/features/admin/AdminDashboard';
 import ImageGallery from '@/features/gallery/ImageGallery';
 import { fetchUsage } from '@/features/admin/services/usageService';
 import { galleryService } from '@/features/gallery/galleryService';
+import Dither from '@/components/shared/Dither';
 
 const defaultCategory = CATEGORIES[0];
 
@@ -144,10 +145,10 @@ const VclLabApp: React.FC = () => {
     // Menu view
     return (
       <div className="w-full max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+        <h2 className="text-2xl font-bold text-white mb-2 text-center">
           {translate('category_selector_title', 'What kind of photo do you need?')}
         </h2>
-        <p className="text-gray-500 mb-8 text-center">
+        <p className="text-white/50 mb-8 text-center">
           {translate('category_selector_subtitle', 'Please select a category that fits your business.')}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -155,13 +156,13 @@ const VclLabApp: React.FC = () => {
             <button
               key={cat.id}
               onClick={() => setActiveView('generator')}
-              className="group flex flex-col items-center p-6 bg-white rounded-xl border-2 border-gray-200 hover:border-red-500 hover:shadow-lg transition-all text-center"
+              className="group flex flex-col items-center p-6 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 hover:border-red-500/50 hover:bg-black/40 transition-all text-center"
             >
-              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:bg-red-100 transition-colors">
+              <div className="w-16 h-16 rounded-full bg-red-600/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-600/30 transition-colors">
                 {cat.icon}
               </div>
-              <h3 className="font-bold text-gray-900 mb-1">{t(cat.nameKey)}</h3>
-              <p className="text-sm text-gray-500">{t(cat.descriptionKey)}</p>
+              <h3 className="font-bold text-white mb-1">{t(cat.nameKey)}</h3>
+              <p className="text-sm text-white/50">{t(cat.descriptionKey)}</p>
             </button>
           ))}
         </div>
@@ -184,13 +185,26 @@ const VclLabApp: React.FC = () => {
   const isAdmin = user.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen relative flex flex-col items-center p-4 sm:p-6 lg:p-8">
+      <div className="fixed inset-0 -z-10">
+        <Dither
+          waveSpeed={0.03}
+          waveFrequency={3}
+          waveAmplitude={0.3}
+          waveColor={[0.8, 0.1, 0.1]}
+          colorNum={4}
+          pixelSize={2}
+          disableAnimation={false}
+          enableMouseInteraction={true}
+          mouseRadius={1}
+        />
+      </div>
       <header className="w-full max-w-5xl mb-8">
         <div className="flex justify-between items-start flex-wrap gap-4">
-          <div className="flex flex-col space-y-2 text-sm text-gray-600">
-            <span className="font-semibold text-gray-800">{translate('header_welcome', 'Welcome back,')} {user.username}</span>
+          <div className="flex flex-col space-y-2 text-sm text-white/70">
+            <span className="font-semibold text-white">{translate('header_welcome', 'Welcome back,')} {user.username}</span>
             {creditsRemaining !== null && (
-              <span className="inline-flex items-center gap-2 text-xs text-red-700 bg-red-100 px-3 py-1 rounded-full">
+              <span className="inline-flex items-center gap-2 text-xs text-red-200 bg-red-900/40 px-3 py-1 rounded-full border border-red-500/20">
                 {translate('header_daily_credits', 'Daily credits')}: {creditsRemaining}
               </span>
             )}
@@ -206,19 +220,19 @@ const VclLabApp: React.FC = () => {
             <div className="flex space-x-2">
               <button
                 onClick={() => setLocale('ru')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'ru' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+                className={`px-3 py-1 text-sm rounded-md ${locale === 'ru' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
               >
                 RU
               </button>
               <button
                 onClick={() => setLocale('en')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'en' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+                className={`px-3 py-1 text-sm rounded-md ${locale === 'en' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
               >
                 EN
               </button>
               <button
                 onClick={() => setLocale('kk')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'kk' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+                className={`px-3 py-1 text-sm rounded-md ${locale === 'kk' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
               >
                 KK
               </button>
@@ -226,7 +240,7 @@ const VclLabApp: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setActiveView(activeView === 'gallery' ? 'menu' : 'gallery')}
-                className={`px-3 py-1 text-xs rounded-md ${activeView === 'gallery' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                className={`px-3 py-1 text-xs rounded-md ${activeView === 'gallery' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
               >
                 {translate('gallery_button', 'My Gallery')}
               </button>
@@ -240,7 +254,7 @@ const VclLabApp: React.FC = () => {
               )}
               <button
                 onClick={logout}
-                className="px-3 py-1 text-xs rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300"
+                className="px-3 py-1 text-xs rounded-md bg-white/10 text-white/70 hover:bg-white/20"
               >
                 {translate('button_logout', 'Logout')}
               </button>
@@ -248,22 +262,22 @@ const VclLabApp: React.FC = () => {
           </div>
         </div>
       </header>
-      <main className="w-full flex justify-center">
+      <main className="w-full flex justify-center flex-grow">
         {renderMainContent()}
       </main>
-      <footer className="w-full text-center mt-12 text-red-600 text-sm border-t border-red-100 pt-8">
+      <footer className="w-full text-center mt-12 text-white/50 text-sm border-t border-white/10 pt-8">
         <p>
           {t('footer_made_by')}{' '}
           <a
             href="https://vcl.studio"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-red-700 hover:underline hover:text-red-800"
+            className="font-semibold text-red-400 hover:underline hover:text-red-300"
           >
             VCL Technology
           </a>
         </p>
-        <p className="mt-1 text-red-500">{t('footer_follow_cta')}</p>
+        <p className="mt-1 text-white/40">{t('footer_follow_cta')}</p>
       </footer>
     </div>
   );

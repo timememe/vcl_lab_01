@@ -255,17 +255,17 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                   i <= currentStepIndex
                     ? 'bg-red-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                    : 'bg-white/10 text-white/40'
                 }`}
               >
                 {i + 1}
               </div>
-              <span className={`mt-1 text-xs font-medium ${i <= currentStepIndex ? 'text-red-600' : 'text-gray-400'}`}>
+              <span className={`mt-1 text-xs font-medium ${i <= currentStepIndex ? 'text-red-400' : 'text-white/30'}`}>
                 {stepLabels[i]}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-16 sm:w-24 h-0.5 mx-2 mb-5 ${i < currentStepIndex ? 'bg-red-600' : 'bg-gray-200'}`} />
+              <div className={`w-16 sm:w-24 h-0.5 mx-2 mb-5 ${i < currentStepIndex ? 'bg-red-600' : 'bg-white/10'}`} />
             )}
           </React.Fragment>
         ))}
@@ -274,8 +274,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       {/* Step 1: Product selection */}
       {step === 'product' && (
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('stepper_select_product')}</h2>
-          <p className="text-gray-500 mb-6">{t('category_product_photo_desc')}</p>
+          <h2 className="text-2xl font-bold text-white mb-2">{t('stepper_select_product')}</h2>
+          <p className="text-white/50 mb-6">{t('category_product_photo_desc')}</p>
 
           <PresetSelector
             onPresetSelect={(preset) => {
@@ -305,15 +305,15 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           <div className="flex items-center gap-3 mb-2">
             <button
               onClick={() => setStep('product')}
-              className="p-1 rounded-md hover:bg-gray-100 text-gray-500"
+              className="p-1 rounded-md hover:bg-white/10 text-white/50"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-2xl font-bold text-gray-900">{t('stepper_select_goal')}</h2>
+            <h2 className="text-2xl font-bold text-white">{t('stepper_select_goal')}</h2>
           </div>
 
           {selectedPreset && (
-            <p className="text-gray-500 mb-6 ml-9">
+            <p className="text-white/50 mb-6 ml-9">
               {selectedPreset.name}
             </p>
           )}
@@ -324,14 +324,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 key={goal.id}
                 onClick={() => handleGoalSelect(goal)}
                 disabled={settingsLoading}
-                className="group flex flex-col items-center p-6 bg-white rounded-xl border-2 border-gray-200 hover:border-red-500 hover:shadow-lg transition-all text-center disabled:opacity-50"
+                className="group flex flex-col items-center p-6 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 hover:border-red-500/50 hover:bg-black/40 transition-all text-center disabled:opacity-50"
               >
-                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 group-hover:bg-red-100 transition-colors">
+                <div className="w-16 h-16 rounded-full bg-red-600/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-600/30 transition-colors">
                   {GOAL_ICONS[goal.icon]}
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">{t(goal.nameKey)}</h3>
-                <p className="text-sm text-gray-500">{t(goal.descKey)}</p>
-                <span className="mt-3 text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                <h3 className="font-bold text-white mb-1">{t(goal.nameKey)}</h3>
+                <p className="text-sm text-white/50">{t(goal.descKey)}</p>
+                <span className="mt-3 text-xs font-mono text-white/30 bg-white/5 px-2 py-1 rounded">
                   {goal.aspectRatio}
                 </span>
               </button>
@@ -339,10 +339,10 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
           </div>
 
           {/* Advanced settings toggle */}
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-white/10 pt-4">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="flex items-center gap-2 text-sm text-white/40 hover:text-white/70 transition-colors"
             >
               <Settings2 className="w-4 h-4" />
               {t('stepper_advanced')}
@@ -351,50 +351,50 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             {showAdvanced && !settingsLoading && (
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lighting</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Lighting</label>
                   <select
                     value={lightingOverride}
                     onChange={(e) => setLightingOverride(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-sm text-white"
                   >
-                    <option value="">Auto (by goal)</option>
+                    <option value="" className="bg-neutral-900">Auto (by goal)</option>
                     {lightingSettings.map(s => (
-                      <option key={s.id} value={s.value}>{s.label}</option>
+                      <option key={s.id} value={s.value} className="bg-neutral-900">{s.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Background</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Background</label>
                   <select
                     value={backgroundOverride}
                     onChange={(e) => setBackgroundOverride(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-sm text-white"
                   >
-                    <option value="">Auto (by goal)</option>
+                    <option value="" className="bg-neutral-900">Auto (by goal)</option>
                     {backgroundSettings.map(s => (
-                      <option key={s.id} value={s.value}>{s.label}</option>
+                      <option key={s.id} value={s.value} className="bg-neutral-900">{s.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Camera</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Camera</label>
                   <select
                     value={cameraOverride}
                     onChange={(e) => setCameraOverride(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-sm text-white"
                   >
-                    <option value="">Auto (by goal)</option>
+                    <option value="" className="bg-neutral-900">Auto (by goal)</option>
                     {cameraAngleSettings.map(s => (
-                      <option key={s.id} value={s.value}>{s.label}</option>
+                      <option key={s.id} value={s.value} className="bg-neutral-900">{s.label}</option>
                     ))}
                   </select>
                 </div>
                 <div className="sm:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('field_customRequest_label')}</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">{t('field_customRequest_label')}</label>
                   <textarea
                     value={customRequest}
                     onChange={(e) => setCustomRequest(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none text-sm"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md resize-none text-sm text-white placeholder-white/30"
                     rows={2}
                     placeholder={t('field_customRequest_placeholder')}
                   />
@@ -409,9 +409,9 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
       {step === 'result' && (
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{t('stepper_step_result')}</h2>
+            <h2 className="text-2xl font-bold text-white">{t('stepper_step_result')}</h2>
             {selectedGoal && (
-              <span className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded font-mono">
+              <span className="text-sm text-white/40 bg-white/5 px-2 py-1 rounded font-mono">
                 {t(selectedGoal.nameKey)} · {selectedGoal.aspectRatio}
               </span>
             )}
@@ -422,8 +422,8 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
               <LoadingIndicator />
             ) : error ? (
               <div className="text-center">
-                <p className="font-bold text-red-600 mb-2">{t('error_generation_failed')}</p>
-                <p className="text-sm text-red-500 mb-4">{error}</p>
+                <p className="font-bold text-red-400 mb-2">{t('error_generation_failed')}</p>
+                <p className="text-sm text-red-300/70 mb-4">{error}</p>
                 <div className="flex gap-3 justify-center">
                   <button
                     onClick={handleRegenerate}
@@ -434,7 +434,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   </button>
                   <button
                     onClick={handleStartOver}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white/70 rounded-lg text-sm font-semibold hover:bg-white/20"
                   >
                     <RotateCcw className="w-4 h-4" />
                     {t('stepper_start_over')}
@@ -444,7 +444,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
             ) : generatedImages.length > 0 ? (
               <div className="w-full flex flex-col gap-4">
                 {generatedImages.map((image, index) => (
-                  <div key={index} className="flex flex-col gap-3 bg-white rounded-xl shadow-md p-4">
+                  <div key={index} className="flex flex-col gap-3 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 p-4">
                     {generatedVideos[index] ? (
                       <video
                         src={generatedVideos[index]}
@@ -503,14 +503,14 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                   </button>
                   <button
                     onClick={() => setStep('goal')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/10 text-white/70 rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     {t('stepper_step_goal')}
                   </button>
                   <button
                     onClick={handleStartOver}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/10 text-white/70 rounded-lg text-sm font-semibold hover:bg-white/20 transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     {t('stepper_start_over')}
@@ -518,7 +518,7 @@ const ProductCollageCreator: React.FC<ProductCollageCreatorProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="text-center text-gray-400">
+              <div className="text-center text-white/40">
                 <p>{t('stepper_generating')}</p>
               </div>
             )}
