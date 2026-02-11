@@ -13,6 +13,7 @@ import ImageGallery from '@/features/gallery/ImageGallery';
 import { fetchUsage } from '@/features/admin/services/usageService';
 import { galleryService } from '@/features/gallery/galleryService';
 import Dither from '@/components/shared/Dither';
+import Header from '@/components/shared/Header';
 
 const defaultCategory = CATEGORIES[0];
 
@@ -156,7 +157,7 @@ const VclLabApp: React.FC = () => {
             <button
               key={cat.id}
               onClick={() => setActiveView('generator')}
-              className="group flex flex-col items-center p-6 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 hover:border-red-500/50 hover:bg-black/40 transition-all text-center"
+              className="group flex flex-col items-center p-6 bg-black/30 backdrop-blur-md rounded-xl border border-red-500/10 hover:border-red-500/50 hover:bg-red-950/30 transition-all text-center"
             >
               <div className="w-16 h-16 rounded-full bg-red-600/20 flex items-center justify-center text-red-400 mb-4 group-hover:bg-red-600/30 transition-colors">
                 {cat.icon}
@@ -199,73 +200,23 @@ const VclLabApp: React.FC = () => {
           mouseRadius={1}
         />
       </div>
-      <header className="w-full max-w-5xl mb-8">
-        <div className="flex justify-between items-start flex-wrap gap-4">
-          <div className="flex flex-col space-y-2 text-sm text-white/70">
-            <span className="font-semibold text-white">{translate('header_welcome', 'Welcome back,')} {user.username}</span>
-            {creditsRemaining !== null && (
-              <span className="inline-flex items-center gap-2 text-xs text-red-200 bg-red-900/40 px-3 py-1 rounded-full border border-red-500/20">
-                {translate('header_daily_credits', 'Daily credits')}: {creditsRemaining}
-              </span>
-            )}
-          </div>
-          <div onClick={handleReset} className="cursor-pointer inline-block group text-center mx-auto" title={t('tooltip_go_home')}>
-            <img
-              src="/logo.png"
-              alt="VCL Logo"
-              className="h-16 sm:h-20 mx-auto group-hover:opacity-90 transition-opacity"
-            />
-          </div>
-          <div className="flex flex-col space-y-3 items-end">
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setLocale('ru')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'ru' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-              >
-                RU
-              </button>
-              <button
-                onClick={() => setLocale('en')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'en' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLocale('kk')}
-                className={`px-3 py-1 text-sm rounded-md ${locale === 'kk' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-              >
-                KK
-              </button>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setActiveView(activeView === 'gallery' ? 'menu' : 'gallery')}
-                className={`px-3 py-1 text-xs rounded-md ${activeView === 'gallery' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-              >
-                {translate('gallery_button', 'My Gallery')}
-              </button>
-              {isAdmin && activeView !== 'admin' && (
-                <button
-                  onClick={() => setActiveView('admin')}
-                  className="px-3 py-1 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
-                >
-                  {translate('admin_open_button', 'Admin dashboard')}
-                </button>
-              )}
-              <button
-                onClick={logout}
-                className="px-3 py-1 text-xs rounded-md bg-white/10 text-white/70 hover:bg-white/20"
-              >
-                {translate('button_logout', 'Logout')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div className="fixed inset-0 -z-[5] bg-black/60" />
+      <Header
+        username={user.username}
+        creditsRemaining={creditsRemaining}
+        locale={locale}
+        setLocale={setLocale}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        isAdmin={isAdmin}
+        onReset={handleReset}
+        onLogout={logout}
+        translate={translate}
+      />
       <main className="w-full flex justify-center flex-grow">
         {renderMainContent()}
       </main>
-      <footer className="w-full text-center mt-12 text-white/50 text-sm border-t border-white/10 pt-8">
+      <footer className="w-full text-center mt-12 text-white/50 text-sm border-t border-red-500/10 pt-8">
         <p>
           {t('footer_made_by')}{' '}
           <a
